@@ -167,8 +167,8 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onReturnToApp }) => 
       ]);
 
       if (metricsRes.status === 403 || usersRes.status === 403) {
-        handleAdminLogout();
-        throw new Error('Administrative session expired or unauthorized');
+        setApiError('Administrative session needs re-authentication. Please log in again.');
+        return;
       }
 
       if (metricsRes.ok) {

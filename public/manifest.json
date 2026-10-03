@@ -1,0 +1,17 @@
+{
+  "name": "Finora AI - Smart Financial Management",
+  "short_name": "Finora AI",
+  "description": "Intelligent personal finance, budget tracking, and real-time bank sync.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090a0f",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

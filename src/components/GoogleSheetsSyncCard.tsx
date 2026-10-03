@@ -8,21 +8,20 @@ import {
   ExternalLink,
   Link2,
   ShieldAlert,
+  PlusCircle,
 } from 'lucide-react';
 import { UserProfile, BankAccountDetails } from '../types/finance';
 import {
   initGoogleAuth,
   signInWithGoogleSheets,
   getGoogleAccessToken,
+  createOrGetFinoraSpreadsheet,
   appendRowToSpreadsheet,
   getSpreadsheetValues,
   extractSpreadsheetId,
 } from '../utils/googleSheets';
 import { apiFetch } from '../utils/clientApiFallback';
 
-const DEFAULT_SPREADSHEET_URL =
-  'https://docs.google.com/spreadsheets/d/1q7ScyS4Zq4mDHw9026YDzPTyrX0zkklA6XYbElM6DcA/edit#gid=0';
-const DEFAULT_SPREADSHEET_ID = '1q7ScyS4Zq4mDHw9026YDzPTyrX0zkklA6XYbElM6DcA';
 const GCP_PROJECT_ID = 'gen-lang-client-0416276418';
 
 interface GoogleSheetsSyncCardProps {
@@ -35,8 +34,8 @@ interface GoogleSheetsSyncCardProps {
 export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
   userProfile,
   bankAccounts = [],
-  spreadsheetUrl = DEFAULT_SPREADSHEET_URL,
-  spreadsheetId = DEFAULT_SPREADSHEET_ID,
+  spreadsheetUrl = '',
+  spreadsheetId = '',
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -86,7 +85,11 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
   const handleSaveSheetUrl = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUrl = currentSpreadsheetUrl.trim();
-    const cleanId = extractSpreadsheetId(cleanUrl) || DEFAULT_SPREADSHEET_ID;
+    const cleanId = extractSpreadsheetId(cleanUrl);
+    if (!cleanId) {
+      setStatusMessage('Please enter a valid Google Sheet URL or ID.');
+      return;
+    }
     localStorage.setItem('finora_google_spreadsheet_url', cleanUrl);
     localStorage.setItem('finora_google_spreadsheet_id', cleanId);
     setCurrentSpreadsheetId(cleanId);
@@ -98,16 +101,42 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
     }
   };
 
-  const loadSheetData = async (token: string) => {
+  const handleCreateNewSheet = async () => {
+    const token = getGoogleAccessToken();
+    if (!token) {
+      setStatusMessage('Please sign in with Google first.');
+      return;
+    }
+
+    setIsLoading(true);
+    setStatusMessage('Creating a new Google Sheet in your Google Drive...');
     try {
-      const targetId = currentSpreadsheetId || DEFAULT_SPREADSHEET_ID;
-      const rows = await getSpreadsheetValues(token, targetId);
+      const sId = await createOrGetFinoraSpreadsheet(token, 'Finora AI - Live User Accounts');
+      const newUrl = `https://docs.google.com/spreadsheets/d/${sId}/edit`;
+      localStorage.setItem('finora_google_spreadsheet_url', newUrl);
+      localStorage.setItem('finora_google_spreadsheet_id', sId);
+      setCurrentSpreadsheetId(sId);
+      setCurrentSpreadsheetUrl(newUrl);
+      setStatusMessage('New Google Sheet created with full Editor access!');
+      await loadSheetData(token);
+    } catch (err: any) {
+      console.error('Create sheet error:', err);
+      setStatusMessage(err.message || 'Failed to create new spreadsheet.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadSheetData = async (token: string) => {
+    if (!currentSpreadsheetId) return;
+    try {
+      const rows = await getSpreadsheetValues(token, currentSpreadsheetId);
       setSheetRows(rows);
       setAccessVerified(true);
     } catch (err: any) {
       console.error('Error loading sheet data:', err);
       setAccessVerified(false);
-      setStatusMessage('Warning: Could not verify Editor access to this spreadsheet. Check sharing permissions.');
+      setStatusMessage('403 Error: You do not have access to this document. Please click "Create New Finora Sheet" above.');
     }
   };
 
@@ -118,14 +147,17 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
       return;
     }
 
+    if (!currentSpreadsheetId) {
+      setStatusMessage('Please create or link a Google Sheet first.');
+      return;
+    }
+
     setIsSyncing(true);
     setStatusMessage('Verifying Editor permissions and syncing users...');
 
     try {
-      const targetId = currentSpreadsheetId || DEFAULT_SPREADSHEET_ID;
-
       // Verify read/write access test
-      await getSpreadsheetValues(token, targetId);
+      await getSpreadsheetValues(token, currentSpreadsheetId);
       setAccessVerified(true);
 
       // Fetch all registered users from backend admin API
@@ -159,7 +191,7 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
           '****' + (u.phone?.slice(-4) || '4821'),
           u.totalReportedBalance ?? 0,
         ];
-        await appendRowToSpreadsheet(token, targetId, rowData);
+        await appendRowToSpreadsheet(token, currentSpreadsheetId, rowData);
       }
 
       await loadSheetData(token);
@@ -168,7 +200,7 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
     } catch (error: any) {
       console.error('Sync failed:', error);
       setAccessVerified(false);
-      setStatusMessage(error.message || 'Sync failed: Insufficient Editor permissions on spreadsheet.');
+      setStatusMessage('403 Error: Access denied. Click "Create New Finora Sheet" above to create a sheet you own.');
     } finally {
       setIsSyncing(false);
     }
@@ -202,7 +234,7 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
           )}
           {accessVerified === false && (
             <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-              ⚠ Permission Error
+              ⚠ 403 Permission Error
             </span>
           )}
           <span
@@ -217,35 +249,27 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
         </div>
       </div>
 
-      {/* Google Cloud Project Console Quick Links */}
-      <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-indigo-500/30 space-y-2">
-        <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold">
-          <ShieldAlert className="h-4 w-4 text-indigo-400" />
-          <span>Google Cloud Project Setup ({GCP_PROJECT_ID})</span>
+      {/* 403 Help & Create New Sheet Option */}
+      <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold">
+            <ShieldAlert className="h-4 w-4 text-indigo-400" />
+            <span>Avoid 403 Errors — Create Your Own Sheet Instantly</span>
+          </div>
+          {isAuthenticated && (
+            <button
+              onClick={handleCreateNewSheet}
+              disabled={isLoading}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-md disabled:opacity-50 whitespace-nowrap"
+            >
+              <PlusCircle className="h-4 w-4" />
+              <span>Create New Finora Sheet</span>
+            </button>
+          )}
         </div>
         <p className="text-[11px] text-slate-300">
-          Ensure Google Sheets API is enabled and your account has Editor access on the spreadsheet.
+          If you encounter a 403 error, click <strong>"Create New Finora Sheet"</strong> above. This automatically generates a brand new spreadsheet directly inside your own Google Drive where you are the owner with 100% full Editor access.
         </p>
-        <div className="flex flex-wrap gap-2 pt-1">
-          <a
-            href={`https://console.cloud.google.com/apis/library/sheets.googleapis.com?project=${GCP_PROJECT_ID}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900/80 border border-indigo-700/50 text-indigo-200 font-semibold text-[11px] transition-colors"
-          >
-            <span>Enable Sheets API</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-          <a
-            href={`https://console.cloud.google.com/auth/overview?project=${GCP_PROJECT_ID}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900/80 border border-indigo-700/50 text-indigo-200 font-semibold text-[11px] transition-colors"
-          >
-            <span>OAuth & Service Accounts</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
       </div>
 
       {/* Spreadsheet Link Input */}
@@ -264,16 +288,18 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
         >
           Link Sheet
         </button>
-        <a
-          href={currentSpreadsheetUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs whitespace-nowrap transition-colors"
-          title="Open Google Sheet"
-        >
-          <span>Open</span>
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
+        {currentSpreadsheetUrl && (
+          <a
+            href={currentSpreadsheetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs whitespace-nowrap transition-colors"
+            title="Open Google Sheet"
+          >
+            <span>Open</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        )}
       </form>
 
       {/* Status / Message Display */}

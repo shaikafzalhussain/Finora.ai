@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090a0f"/>
+      <stop offset="100%" stop-color="#022c22"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="24" y="24" width="464" height="464" rx="92" fill="none" stroke="#059669" stroke-width="8" stroke-opacity="0.6"/>
+  <!-- Rupee Symbol ₹ -->
+  <path d="M176 144h160M176 208h136M176 144v64c0 35.3 28.7 64 64 64h16l-96 96M260 272l96 96" fill="none" stroke="url(#glow)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
