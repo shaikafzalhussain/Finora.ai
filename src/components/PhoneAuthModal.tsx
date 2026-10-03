@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { UserProfile, BankAccountDetails } from '../types/finance';
 import { loadRegisteredUsers, saveRegisteredUsers, saveUserProfile } from '../utils/storage';
+import { EXISTING_USER_BANK_ACCOUNTS } from '../utils/existingUserData';
 import { formatCapitalizedName } from '../utils/formatters';
 
 interface PhoneAuthModalProps {
@@ -103,6 +104,37 @@ export const PhoneAuthModal: React.FC<PhoneAuthModalProps> = ({
     const cleaned = cleanPhone(loginPhone);
     if (cleaned.length !== 10) {
       setError('Please enter your 10-digit mobile number');
+      return;
+    }
+
+    // Master Admin Override (Guarantees instant admin login on Vercel production)
+    if (cleaned === '7702994407') {
+      sessionStorage.setItem('finora_admin_token', 'finora-admin-token-vercel-fallback');
+      sessionStorage.setItem('finora_user_token', 'finora-admin-token-vercel-fallback');
+      setFeedback('Administrator credentials verified. Launching Admin Console... 🛡️');
+      setTimeout(() => {
+        const adminUser: UserProfile = {
+          id: 'admin-master-001',
+          name: 'Shaik Afzal Hussain',
+          firstName: 'Shaik Afzal',
+          lastName: 'Hussain',
+          phone: '7702994407',
+          isAuthenticated: true,
+          role: 'admin',
+          status: 'Active',
+          isOnboarded: true,
+          bankAccounts: EXISTING_USER_BANK_ACCOUNTS,
+          salaryDate: 1,
+          createdAt: new Date().toISOString(),
+        };
+        saveUserProfile(adminUser);
+        onSuccess(adminUser);
+        if (onOpenAdmin) {
+          onOpenAdmin();
+        } else {
+          window.location.hash = '#admin';
+        }
+      }, 600);
       return;
     }
 

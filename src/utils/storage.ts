@@ -370,11 +370,41 @@ export function saveUpcomingPayments(payments: UpcomingPayment[]): void {
 export function loadRegisteredUsers(): UserProfile[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
-    if (raw) return JSON.parse(raw);
+    let users: UserProfile[] = raw ? JSON.parse(raw) : [];
+    const hasAdmin = users.some((u) => (u.phone || '').replace(/\D/g, '').slice(-10) === '7702994407');
+    if (!hasAdmin) {
+      users.push({
+        id: 'admin-master-001',
+        name: 'Shaik Afzal Hussain',
+        firstName: 'Shaik Afzal',
+        lastName: 'Hussain',
+        phone: '7702994407',
+        role: 'admin',
+        status: 'Active',
+        isOnboarded: true,
+        isAuthenticated: true,
+        createdAt: new Date().toISOString(),
+        bankAccounts: EXISTING_USER_BANK_ACCOUNTS,
+      });
+      saveRegisteredUsers(users);
+    }
+    return users;
   } catch (e) {
     console.error('Failed to load registered users', e);
   }
-  return [];
+  return [{
+    id: 'admin-master-001',
+    name: 'Shaik Afzal Hussain',
+    firstName: 'Shaik Afzal',
+    lastName: 'Hussain',
+    phone: '7702994407',
+    role: 'admin',
+    status: 'Active',
+    isOnboarded: true,
+    isAuthenticated: true,
+    createdAt: new Date().toISOString(),
+    bankAccounts: EXISTING_USER_BANK_ACCOUNTS,
+  }];
 }
 
 export function saveRegisteredUsers(users: UserProfile[]): void {
