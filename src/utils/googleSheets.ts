@@ -54,11 +54,21 @@ export const signOutGoogleSheets = async () => {
   cachedAccessToken = null;
 };
 
+export function extractSpreadsheetId(urlOrId: string): string {
+  if (!urlOrId) return '';
+  const match = urlOrId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  if (match && match[1]) {
+    return match[1];
+  }
+  return urlOrId.trim();
+}
+
 // Google Sheets API Helpers
 export async function createOrGetFinoraSpreadsheet(accessToken: string, sheetTitle = 'Finora AI - Live User Accounts'): Promise<string> {
-  const storedId = localStorage.getItem('finora_google_spreadsheet_id');
-  if (storedId) {
-    return storedId;
+  const storedInput = localStorage.getItem('finora_google_spreadsheet_id');
+  if (storedInput) {
+    const sId = extractSpreadsheetId(storedInput);
+    if (sId) return sId;
   }
 
   const res = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
@@ -81,21 +91,26 @@ export async function createOrGetFinoraSpreadsheet(accessToken: string, sheetTit
   const spreadsheetId = data.spreadsheetId;
   localStorage.setItem('finora_google_spreadsheet_id', spreadsheetId);
 
-  await appendRowToSpreadsheet(accessToken, spreadsheetId, [
-    'Timestamp',
-    'User Name',
-    'Phone Number',
-    'Security PIN',
-    'Bank Name',
-    'Bank Account Number',
-    'Current Balance (₹)',
-  ]);
+  try {
+    await appendRowToSpreadsheet(accessToken, spreadsheetId, [
+      'Timestamp',
+      'User Name',
+      'Phone Number',
+      'Security PIN',
+      'Bank Name',
+      'Bank Account Number',
+      'Current Balance (₹)',
+    ]);
+  } catch (e) {
+    console.error('Error initializing headers:', e);
+  }
 
   return spreadsheetId;
 }
 
-export async function appendRowToSpreadsheet(accessToken: string, spreadsheetId: string, rowData: (string | number)[]) {
-  const range = 'Users & Balances!A:G';
+export async function appendRowToSpreadsheet(accessToken: string, spreadsheetIdRaw: string, rowData: (string | number)[]) {
+  const spreadsheetId = extractSpreadsheetId(spreadsheetIdRaw);
+  const range = 'A:G';
   const res = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED`,
     {
@@ -111,13 +126,15 @@ export async function appendRowToSpreadsheet(accessToken: string, spreadsheetId:
   );
 
   if (!res.ok) {
-    throw new Error(`Failed to append row to Google Sheet: ${res.statusText}`);
+    const errBody = await res.text();
+    throw new Error(`Failed to append row to Google Sheet (${res.status}): ${errBody}`);
   }
   return await res.json();
 }
 
-export async function getSpreadsheetValues(accessToken: string, spreadsheetId: string): Promise<any[]> {
-  const range = 'Users & Balances!A:G';
+export async function getSpreadsheetValues(accessToken: string, spreadsheetIdRaw: string): Promise<any[]> {
+  const spreadsheetId = extractSpreadsheetId(spreadsheetIdRaw);
+  const range = 'A:G';
   const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -125,7 +142,8 @@ export async function getSpreadsheetValues(accessToken: string, spreadsheetId: s
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch Google Sheet values: ${res.statusText}`);
+    const errBody = await res.text();
+    throw new Error(`Failed to fetch Google Sheet values (${res.status}): ${errBody}`);
   }
 
   const data = await res.json();

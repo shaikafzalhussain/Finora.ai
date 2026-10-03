@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FileSpreadsheet, Sparkles, CheckCircle, RefreshCw, LogIn, ExternalLink } from 'lucide-react';
+import { FileSpreadsheet, Sparkles, CheckCircle, RefreshCw, LogIn, ExternalLink, Link2 } from 'lucide-react';
 import { UserProfile, BankAccountDetails } from '../types/finance';
-import { initGoogleAuth, signInWithGoogleSheets, getGoogleAccessToken, createOrGetFinoraSpreadsheet, appendRowToSpreadsheet, getSpreadsheetValues } from '../utils/googleSheets';
+import { initGoogleAuth, signInWithGoogleSheets, getGoogleAccessToken, createOrGetFinoraSpreadsheet, appendRowToSpreadsheet, getSpreadsheetValues, extractSpreadsheetId } from '../utils/googleSheets';
 
 interface GoogleSheetsSyncCardProps {
   userProfile: UserProfile;
@@ -13,6 +13,7 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({ user
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(localStorage.getItem('finora_google_spreadsheet_id'));
+  const [sheetUrlInput, setSheetUrlInput] = useState(localStorage.getItem('finora_google_spreadsheet_id') || '');
   const [sheetRows, setSheetRows] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -47,6 +48,20 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({ user
     }
   };
 
+  const handleSaveSheetUrl = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanId = sheetUrlInput.trim();
+    if (!cleanId) return;
+    localStorage.setItem('finora_google_spreadsheet_id', cleanId);
+    setSpreadsheetId(cleanId);
+    setSuccessMessage('Custom Google Sheet URL / ID saved!');
+    setTimeout(() => setSuccessMessage(null), 3000);
+    const token = getGoogleAccessToken();
+    if (token) {
+      loadSheetData(token);
+    }
+  };
+
   const loadSheetData = async (token: string) => {
     try {
       const sId = await createOrGetFinoraSpreadsheet(token);
@@ -55,6 +70,7 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({ user
       setSheetRows(rows);
     } catch (err: any) {
       console.error('Error loading sheet data:', err);
+      setError('Could not read sheet data. Ensure the Google account has viewer/editor access to this spreadsheet.');
     }
   };
 
@@ -99,7 +115,8 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({ user
     }
   };
 
-  const sheetUrl = spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit` : '#';
+  const extractedId = spreadsheetId ? extractSpreadsheetId(spreadsheetId) : '';
+  const sheetUrl = extractedId ? `https://docs.google.com/spreadsheets/d/${extractedId}/edit` : '#';
 
   return (
     <div className="rounded-[28px] bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-800/40 p-6 shadow-xl space-y-5">
@@ -139,7 +156,7 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({ user
               <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
               <span>{isSyncing ? 'Syncing...' : 'Sync Now to Sheets'}</span>
             </button>
-            {spreadsheetId && (
+            {extractedId && (
               <a
                 href={sheetUrl}
                 target="_blank"
@@ -154,6 +171,24 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({ user
           </div>
         )}
       </div>
+
+      {/* Custom Google Sheet URL Input */}
+      <form onSubmit={handleSaveSheetUrl} className="flex items-center gap-2 bg-slate-950/80 p-2 rounded-2xl border border-slate-800">
+        <Link2 className="h-4 w-4 text-emerald-400 ml-2 flex-shrink-0" />
+        <input
+          type="text"
+          value={sheetUrlInput}
+          onChange={(e) => setSheetUrlInput(e.target.value)}
+          placeholder="Paste your custom Google Sheet URL or Spreadsheet ID here..."
+          className="w-full bg-transparent px-2 py-1.5 text-xs text-white placeholder-slate-500 outline-none"
+        />
+        <button
+          type="submit"
+          className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-xs whitespace-nowrap transition-colors"
+        >
+          Use Sheet
+        </button>
+      </form>
 
       {error && (
         <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800/50 text-rose-300 text-xs font-semibold">
