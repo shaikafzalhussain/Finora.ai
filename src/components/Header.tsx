@@ -163,6 +163,26 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               </div>
 
+              {/* Notification Bell (Mobile) */}
+              <button
+                onClick={() => {
+                  if (onOpenNotifications) {
+                    onOpenNotifications();
+                  } else {
+                    setActiveTab('subscriptions');
+                  }
+                }}
+                className="relative p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
+                title="Payment Reminders"
+              >
+                <Bell className="h-4 w-4" />
+                {pendingRecurringCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-rose-500 text-[9px] font-black text-white flex items-center justify-center animate-pulse">
+                    {pendingRecurringCount}
+                  </span>
+                )}
+              </button>
+
               {/* User Avatar Button (Mobile) - Opens authenticated profile directly */}
               <button
                 onClick={() => setActiveTab('profile')}
