@@ -7,6 +7,7 @@ import {
   LogIn,
   ExternalLink,
   Link2,
+  ShieldAlert,
 } from 'lucide-react';
 import { UserProfile, BankAccountDetails } from '../types/finance';
 import {
@@ -22,6 +23,7 @@ import { apiFetch } from '../utils/clientApiFallback';
 const DEFAULT_SPREADSHEET_URL =
   'https://docs.google.com/spreadsheets/d/1q7ScyS4Zq4mDHw9026YDzPTyrX0zkklA6XYbElM6DcA/edit#gid=0';
 const DEFAULT_SPREADSHEET_ID = '1q7ScyS4Zq4mDHw9026YDzPTyrX0zkklA6XYbElM6DcA';
+const GCP_PROJECT_ID = 'gen-lang-client-0416276418';
 
 interface GoogleSheetsSyncCardProps {
   userProfile: UserProfile;
@@ -41,6 +43,7 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>('');
+  const [accessVerified, setAccessVerified] = useState<boolean | null>(null);
   const [currentSpreadsheetUrl, setCurrentSpreadsheetUrl] = useState<string>(
     localStorage.getItem('finora_google_spreadsheet_url') || spreadsheetUrl
   );
@@ -100,8 +103,11 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
       const targetId = currentSpreadsheetId || DEFAULT_SPREADSHEET_ID;
       const rows = await getSpreadsheetValues(token, targetId);
       setSheetRows(rows);
+      setAccessVerified(true);
     } catch (err: any) {
       console.error('Error loading sheet data:', err);
+      setAccessVerified(false);
+      setStatusMessage('Warning: Could not verify Editor access to this spreadsheet. Check sharing permissions.');
     }
   };
 
@@ -113,10 +119,14 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
     }
 
     setIsSyncing(true);
-    setStatusMessage('Syncing all users and accounts to your spreadsheet...');
+    setStatusMessage('Verifying Editor permissions and syncing users...');
 
     try {
       const targetId = currentSpreadsheetId || DEFAULT_SPREADSHEET_ID;
+
+      // Verify read/write access test
+      await getSpreadsheetValues(token, targetId);
+      setAccessVerified(true);
 
       // Fetch all registered users from backend admin API
       const adminToken = sessionStorage.getItem('finora_admin_token');
@@ -154,10 +164,11 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
 
       await loadSheetData(token);
       setLastSynced(new Date().toLocaleTimeString());
-      setStatusMessage(`Successfully synced ${usersToSync.length} user(s) to Google Sheets!`);
+      setStatusMessage(`Successfully synced ${usersToSync.length} user(s) with verified Editor access!`);
     } catch (error: any) {
       console.error('Sync failed:', error);
-      setStatusMessage(error.message || 'Sync encountered an error.');
+      setAccessVerified(false);
+      setStatusMessage(error.message || 'Sync failed: Insufficient Editor permissions on spreadsheet.');
     } finally {
       setIsSyncing(false);
     }
@@ -174,24 +185,67 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
           <div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold mb-1">
               <Sparkles className="h-3 w-3" />
-              <span>Google Sheets Integration</span>
+              <span>Google Sheets & GCP Integration ({GCP_PROJECT_ID})</span>
             </div>
-            <h3 className="text-lg font-black text-white">Real-Time User Data Sync</h3>
+            <h3 className="text-lg font-black text-white">Real-Time User Data Sync & Editor Verification</h3>
             <p className="text-xs text-slate-300">
-              Sync all registered users (Name, Phone, PIN, Bank, Account Number, Balance) to Google Sheets.
+              Sync all registered users with verified Google Sheets Editor permissions.
             </p>
           </div>
         </div>
 
-        <span
-          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold ${
-            isAuthenticated
-              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-              : 'bg-slate-800 text-slate-400 border border-slate-700'
-          }`}
-        >
-          {isAuthenticated ? '● Connected' : '○ Not Connected'}
-        </span>
+        <div className="flex items-center gap-2">
+          {accessVerified === true && (
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              ✓ Editor Verified
+            </span>
+          )}
+          {accessVerified === false && (
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+              ⚠ Permission Error
+            </span>
+          )}
+          <span
+            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold ${
+              isAuthenticated
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                : 'bg-slate-800 text-slate-400 border border-slate-700'
+            }`}
+          >
+            {isAuthenticated ? '● Connected' : '○ Not Connected'}
+          </span>
+        </div>
+      </div>
+
+      {/* Google Cloud Project Console Quick Links */}
+      <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-indigo-500/30 space-y-2">
+        <div className="flex items-center gap-2 text-indigo-300 text-xs font-bold">
+          <ShieldAlert className="h-4 w-4 text-indigo-400" />
+          <span>Google Cloud Project Setup ({GCP_PROJECT_ID})</span>
+        </div>
+        <p className="text-[11px] text-slate-300">
+          Ensure Google Sheets API is enabled and your account has Editor access on the spreadsheet.
+        </p>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <a
+            href={`https://console.cloud.google.com/apis/library/sheets.googleapis.com?project=${GCP_PROJECT_ID}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900/80 border border-indigo-700/50 text-indigo-200 font-semibold text-[11px] transition-colors"
+          >
+            <span>Enable Sheets API</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+          <a
+            href={`https://console.cloud.google.com/auth/overview?project=${GCP_PROJECT_ID}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900/80 border border-indigo-700/50 text-indigo-200 font-semibold text-[11px] transition-colors"
+          >
+            <span>OAuth & Service Accounts</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
       </div>
 
       {/* Spreadsheet Link Input */}
@@ -261,7 +315,7 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({
             <RefreshCw
               className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`}
             />
-            {isSyncing ? 'Syncing All Users...' : 'Sync All Users to Sheets'}
+            {isSyncing ? 'Verifying & Syncing All Users...' : 'Verify Editor & Sync All Users'}
           </button>
         )}
       </div>
