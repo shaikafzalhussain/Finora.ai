@@ -31,6 +31,8 @@ export interface UserProfile {
   email?: string;
   password?: string;
   role?: 'admin' | 'user' | string;
+  status?: 'Active' | 'Disabled' | string;
+  lastLogin?: string;
   isOnboarded: boolean;
   isAuthenticated: boolean;
   bankDetails?: BankAccountDetails;

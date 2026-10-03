@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../utils/clientApiFallback';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -112,7 +113,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onReturnToApp }) => 
     setIsLoggingIn(true);
 
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await apiFetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: loginPhone, pin: loginPin }),
@@ -136,7 +137,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onReturnToApp }) => 
   const handleAdminLogout = async () => {
     if (adminToken) {
       try {
-        await fetch('/api/auth/logout', {
+        await apiFetch('/api/auth/logout', {
           method: 'POST',
           headers: { Authorization: `Bearer ${adminToken}` },
         });
@@ -158,9 +159,9 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onReturnToApp }) => 
       const headers = { Authorization: `Bearer ${adminToken}` };
 
       const [metricsRes, usersRes, auditRes] = await Promise.all([
-        fetch('/api/admin/metrics', { headers }),
-        fetch('/api/admin/users', { headers }),
-        fetch('/api/admin/audit-logs', { headers }),
+        apiFetch('/api/admin/metrics', { headers }),
+        apiFetch('/api/admin/users', { headers }),
+        apiFetch('/api/admin/audit-logs', { headers }),
       ]);
 
       if (metricsRes.status === 403 || usersRes.status === 403) {
@@ -202,7 +203,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onReturnToApp }) => 
     setIsLoadingDetail(true);
 
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
+      const res = await apiFetch(`/api/admin/users/${userId}`, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
       if (!res.ok) throw new Error('Failed to retrieve user records');
@@ -222,7 +223,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onReturnToApp }) => 
     const newStatus = currentStatus === 'Active' ? 'Disabled' : 'Active';
 
     try {
-      const res = await fetch(`/api/admin/users/${userId}/status`, {
+      const res = await apiFetch(`/api/admin/users/${userId}/status`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${adminToken}`,
@@ -263,7 +264,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onReturnToApp }) => 
 
     setIsChangingPin(true);
     try {
-      const res = await fetch('/api/admin/change-pin', {
+      const res = await apiFetch('/api/admin/change-pin', {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${adminToken}`,
