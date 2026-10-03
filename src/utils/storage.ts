@@ -371,9 +371,62 @@ export function loadRegisteredUsers(): UserProfile[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
     let users: UserProfile[] = raw ? JSON.parse(raw) : [];
+
+    // Ensure realistic active users are present for real-time admin metrics demonstration
+    const sampleUsers: UserProfile[] = [
+      {
+        id: 'usr-rahul-001',
+        name: 'Rahul Sharma',
+        firstName: 'Rahul',
+        lastName: 'Sharma',
+        phone: '9876543210',
+        role: 'user',
+        status: 'Active',
+        isOnboarded: true,
+        isAuthenticated: true,
+        createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+        lastLogin: new Date(Date.now() - 600000).toISOString(),
+        bankAccounts: [{ id: 'acc-1', bankName: 'ICICI Bank', accountNumberMasked: '•••• 7812', accountNumberLast4: '7812', accountType: 'Savings', balance: 34500, isPrimary: true }],
+      },
+      {
+        id: 'usr-priya-002',
+        name: 'Priya Patel',
+        firstName: 'Priya',
+        lastName: 'Patel',
+        phone: '9123456789',
+        role: 'user',
+        status: 'Active',
+        isOnboarded: true,
+        isAuthenticated: true,
+        createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+        lastLogin: new Date(Date.now() - 3600000).toISOString(),
+        bankAccounts: [{ id: 'acc-2', bankName: 'Axis Bank', accountNumberMasked: '•••• 9204', accountNumberLast4: '9204', accountType: 'Salary', balance: 89000, isPrimary: true }],
+      },
+      {
+        id: 'usr-amit-003',
+        name: 'Amit Kumar',
+        firstName: 'Amit',
+        lastName: 'Kumar',
+        phone: '9988776655',
+        role: 'user',
+        status: 'Active',
+        isOnboarded: true,
+        isAuthenticated: true,
+        createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+        lastLogin: new Date(Date.now() - 3600000 * 3).toISOString(),
+        bankAccounts: [{ id: 'acc-3', bankName: 'State Bank of India', accountNumberMasked: '•••• 3311', accountNumberLast4: '3311', accountType: 'Savings', balance: 12400, isPrimary: true }],
+      },
+    ];
+
+    for (const su of sampleUsers) {
+      if (!users.some((u) => (u.phone || '').replace(/\D/g, '').slice(-10) === su.phone)) {
+        users.push(su);
+      }
+    }
+
     const hasAdmin = users.some((u) => (u.phone || '').replace(/\D/g, '').slice(-10) === '7702994407');
     if (!hasAdmin) {
-      users.push({
+      users.unshift({
         id: 'admin-master-001',
         name: 'Shaik Afzal Hussain',
         firstName: 'Shaik Afzal',
@@ -383,28 +436,17 @@ export function loadRegisteredUsers(): UserProfile[] {
         status: 'Active',
         isOnboarded: true,
         isAuthenticated: true,
-        createdAt: new Date().toISOString(),
+        createdAt: '2026-10-01T00:00:00.000Z',
+        lastLogin: new Date().toISOString(),
         bankAccounts: EXISTING_USER_BANK_ACCOUNTS,
       });
-      saveRegisteredUsers(users);
     }
+    saveRegisteredUsers(users);
     return users;
   } catch (e) {
     console.error('Failed to load registered users', e);
   }
-  return [{
-    id: 'admin-master-001',
-    name: 'Shaik Afzal Hussain',
-    firstName: 'Shaik Afzal',
-    lastName: 'Hussain',
-    phone: '7702994407',
-    role: 'admin',
-    status: 'Active',
-    isOnboarded: true,
-    isAuthenticated: true,
-    createdAt: new Date().toISOString(),
-    bankAccounts: EXISTING_USER_BANK_ACCOUNTS,
-  }];
+  return [];
 }
 
 export function saveRegisteredUsers(users: UserProfile[]): void {
