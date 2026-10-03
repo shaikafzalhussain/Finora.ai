@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { UserProfile, BankAccountDetails } from '../types/finance';
 import { formatCurrency } from '../utils/formatters';
+import { GoogleSheetsSyncCard } from './GoogleSheetsSyncCard';
 
 interface ProfileViewProps {
   user: UserProfile;
@@ -32,6 +33,7 @@ interface ProfileViewProps {
   onLogout: () => void;
   onExportCsv: () => void;
   onExportJson: () => void;
+  onExportPdf: () => void;
   onResetData: () => void;
   onDeleteAccount: () => void;
   onOpenAdmin?: () => void;
@@ -44,6 +46,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onLogout,
   onExportCsv,
   onExportJson,
+  onExportPdf,
   onResetData,
   onDeleteAccount,
   onOpenAdmin,
@@ -434,7 +437,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <button
+            onClick={onExportPdf}
+            className="p-3.5 rounded-2xl bg-emerald-950/30 hover:bg-emerald-950/50 border border-emerald-800/50 text-left transition-colors flex items-center justify-between group sm:col-span-3"
+          >
+            <div>
+              <span className="text-xs font-extrabold text-emerald-300 block group-hover:text-emerald-200">
+                📄 Export Financial Report (PDF)
+              </span>
+              <span className="text-[10px] text-slate-300">Executive summary report with account breakdown & transactions</span>
+            </div>
+            <Download className="h-4 w-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+          </button>
+
           <button
             onClick={onExportCsv}
             className="p-3.5 rounded-2xl bg-slate-950/70 hover:bg-slate-950 border border-slate-800 text-left transition-colors flex items-center justify-between group"
@@ -443,7 +459,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <span className="text-xs font-bold text-slate-200 block group-hover:text-white">
                 Export Passbook (CSV)
               </span>
-              <span className="text-[10px] text-slate-400">Spreadsheet compatible format</span>
+              <span className="text-[10px] text-slate-400">Spreadsheet format</span>
             </div>
             <Download className="h-4 w-4 text-slate-500 group-hover:text-emerald-400 transition-colors" />
           </button>
@@ -454,9 +470,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           >
             <div>
               <span className="text-xs font-bold text-slate-200 block group-hover:text-white">
-                Export Full Backup (JSON)
+                Export Backup (JSON)
               </span>
-              <span className="text-[10px] text-slate-400">Complete encrypted profile archive</span>
+              <span className="text-[10px] text-slate-400">Full encrypted archive</span>
             </div>
             <Download className="h-4 w-4 text-slate-500 group-hover:text-emerald-400 transition-colors" />
           </button>
@@ -506,6 +522,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Google Sheets Live Sync */}
+      <GoogleSheetsSyncCard userProfile={user} bankAccounts={user.bankAccounts} />
     </div>
   );
 };

@@ -79,6 +79,7 @@ import {
   isExistingAdminUser,
 } from './utils/storage';
 import { EXISTING_USER_BANK_ACCOUNTS } from './utils/existingUserData';
+import { exportFinancialReportPDF } from './utils/pdfExport';
 
 import {
   computeMonthlyStats,
@@ -745,6 +746,21 @@ export default function App() {
     );
   }
 
+  const handleExportPdf = () => {
+    const bAccounts = userProfile.bankAccounts && userProfile.bankAccounts.length > 0
+      ? userProfile.bankAccounts
+      : (userProfile.bankDetails ? [userProfile.bankDetails] : []);
+    exportFinancialReportPDF({
+      userProfile,
+      transactions,
+      categories,
+      bankAccounts: bAccounts,
+      recurring,
+      savingsGoals,
+      monthlyStats,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#090a0f] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white pb-24 md:pb-10 antialiased">
       {/* Top Header & Navigation */}
@@ -768,6 +784,7 @@ export default function App() {
         onReopenOnboarding={() => setIsOnboardingOpen(true)}
         onExportCsv={() => exportTransactionsToCsv(transactions, categories)}
         onExportJson={() => exportDataAsJson(categories, transactions, recurring, savingsGoals)}
+        onExportPdf={handleExportPdf}
         onResetData={handleResetData}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -1157,6 +1174,7 @@ export default function App() {
             onLogout={handleLogout}
             onExportCsv={() => exportTransactionsToCsv(transactions, categories)}
             onExportJson={() => exportDataAsJson(categories, transactions, recurring, savingsGoals)}
+            onExportPdf={handleExportPdf}
             onResetData={handleResetData}
             onDeleteAccount={handleDeleteAccount}
             onOpenAdmin={handleOpenAdmin}

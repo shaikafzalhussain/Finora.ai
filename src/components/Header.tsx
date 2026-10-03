@@ -35,6 +35,7 @@ interface HeaderProps {
   onReopenOnboarding: () => void;
   onExportCsv: () => void;
   onExportJson: () => void;
+  onExportPdf: () => void;
   onResetData: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -55,6 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
   onReopenOnboarding,
   onExportCsv,
   onExportJson,
+  onExportPdf,
   onResetData,
   activeTab,
   setActiveTab,
@@ -308,6 +310,14 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5 text-indigo-400" />
                   <span>Import Bank Statement CSV</span>
+                </button>
+
+                <button
+                  onClick={onExportPdf}
+                  className="w-full text-left px-3.5 py-2 text-xs text-emerald-300 hover:bg-slate-800 flex items-center gap-2 font-bold"
+                >
+                  <Download className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Export Financial Report (PDF)</span>
                 </button>
 
                 <button
