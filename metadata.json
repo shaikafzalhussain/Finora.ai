@@ -1,0 +1,6 @@
+{
+  "name": "SpendWise AI - Personal Finance & Budget Optimizer",
+  "description": "AI-powered monthly spend tracker with smart budget optimization, receipt OCR scanning, and predictive expense forecasting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

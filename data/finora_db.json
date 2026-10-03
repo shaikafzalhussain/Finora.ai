@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "users": [
+    {
+      "id": "admin-master-001",
+      "firstName": "Shaik Afzal",
+      "lastName": "Hussain",
+      "phone": "7702994407",
+      "pinHash": "363ede5da96de29e759ee8e7af3465146d8a80b8a816b73bbcadab466386f48a5877f90e15845ad78341aace1b6684db536803604c41e71f7017b8218c079c00",
+      "pinSalt": "8e15c78ef5add20fa477a49f52a0d41c",
+      "createdAt": "2026-10-03T08:26:54.326Z",
+      "lastLogin": "2026-10-03T08:35:12.136Z",
+      "status": "Active",
+      "role": "admin",
+      "isOnboarded": true,
+      "bankAccounts": [],
+      "transactions": [],
+      "recurring": [],
+      "savingsGoals": []
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "log-1791016512136-36b214",
+      "adminUserId": "admin-master-001",
+      "adminPhone": "7702994407",
+      "action": "admin_login",
+      "details": "Admin signed in successfully.",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-10-03T08:35:12.136Z"
+    },
+    {
+      "id": "log-1791016222326-9d5f69",
+      "adminUserId": "admin-master-001",
+      "adminPhone": "7702994407",
+      "action": "admin_login",
+      "details": "Admin signed in successfully.",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-10-03T08:30:22.326Z"
+    },
+    {
+      "id": "audit-1791016014326",
+      "adminUserId": "admin-master-001",
+      "adminPhone": "7702994407",
+      "action": "system_initialized",
+      "details": "Secure Admin console credentials provisioned with cryptographic hash.",
+      "timestamp": "2026-10-03T08:26:54.326Z"
+    }
+  ]
+}
