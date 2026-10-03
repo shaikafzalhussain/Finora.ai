@@ -12,9 +12,12 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-health', name: 'Healthcare & Pharmacy', type: 'expense', icon: 'Activity', color: '#ef4444', monthlyBudget: 0, isEssential: true },
   { id: 'cat-personal', name: 'Personal Care & Salon', type: 'expense', icon: 'Smile', color: '#a855f7', monthlyBudget: 0, isEssential: false },
   { id: 'cat-travel', name: 'Travel & Vacations', type: 'expense', icon: 'Plane', color: '#14b8a6', monthlyBudget: 0, isEssential: false },
+  { id: 'cat-loan-emi', name: 'EMI / Loans', type: 'expense', icon: 'CreditCard', color: '#f43f5e', monthlyBudget: 0, isEssential: true },
+  { id: 'cat-friends-expense', name: 'Friends & Family', type: 'expense', icon: 'Users', color: '#d946ef', monthlyBudget: 0, isEssential: false },
   { id: 'cat-investments', name: 'SIP & Wealth Building', type: 'expense', icon: 'PiggyBank', color: '#22c55e', monthlyBudget: 0, isEssential: true },
   { id: 'cat-income-salary', name: 'Primary Salary', type: 'income', icon: 'Briefcase', color: '#22c55e', monthlyBudget: 0, isEssential: true },
   { id: 'cat-income-freelance', name: 'Consulting & Freelance', type: 'income', icon: 'Laptop', color: '#10b981', monthlyBudget: 0, isEssential: false },
+  { id: 'cat-income-friends-received', name: 'Friends & Family', type: 'income', icon: 'Users', color: '#10b981', monthlyBudget: 0, isEssential: false },
   { id: 'cat-income-dividends', name: 'Dividends & Interest', type: 'income', icon: 'TrendingUp', color: '#38bdf8', monthlyBudget: 0, isEssential: false },
 ];
 

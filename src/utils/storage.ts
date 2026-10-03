@@ -456,7 +456,19 @@ export function saveRegisteredUsers(users: UserProfile[]): void {
 export function loadCategories(): Category[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-    if (raw) return JSON.parse(raw);
+    let cats = raw ? JSON.parse(raw) : DEFAULT_CATEGORIES;
+    for (const defCat of DEFAULT_CATEGORIES) {
+      const idx = cats.findIndex((c: Category) => c.id === defCat.id);
+      if (idx >= 0) {
+        cats[idx].name = defCat.name;
+        cats[idx].type = defCat.type;
+        cats[idx].icon = defCat.icon;
+      } else {
+        cats.push(defCat);
+      }
+    }
+    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(cats));
+    return cats;
   } catch (e) {
     console.error('Failed to load categories from storage', e);
   }

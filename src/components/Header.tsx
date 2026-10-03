@@ -18,6 +18,7 @@ import {
   LogOut,
   Compass,
   ShieldCheck,
+  Bell,
 } from 'lucide-react';
 import { UserProfile } from '../types/finance';
 
@@ -40,6 +41,8 @@ interface HeaderProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onOpenAdmin?: () => void;
+  pendingRecurringCount?: number;
+  onOpenNotifications?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -61,6 +64,8 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   onOpenAdmin,
+  pendingRecurringCount = 0,
+  onOpenNotifications,
 }) => {
   const [yearStr, monthStr] = currentMonthKey.split('-');
   const year = parseInt(yearStr, 10);
@@ -95,7 +100,6 @@ export const Header: React.FC<HeaderProps> = ({
 
   const NAV_TABS = [
     { id: 'dashboard', label: 'Dashboard' },
-    { id: 'income', label: 'Income' },
     { id: 'transactions', label: 'Passbook & Ledger' },
     { id: 'budgets', label: 'Budgets' },
     { id: 'analytics', label: 'Analytics' },
@@ -231,6 +235,26 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Plus className="h-4 w-4 stroke-[2.5]" />
               <span>Add</span>
+            </button>
+
+            {/* Notification Bell for Pending Recurring Payments */}
+            <button
+              onClick={() => {
+                if (onOpenNotifications) {
+                  onOpenNotifications();
+                } else {
+                  setActiveTab('subscriptions');
+                }
+              }}
+              className="relative p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              title="Pending Recurring Payments / Bills"
+            >
+              <Bell className="h-4 w-4" />
+              {pendingRecurringCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-[10px] font-black text-white flex items-center justify-center animate-pulse">
+                  {pendingRecurringCount}
+                </span>
+              )}
             </button>
 
             {/* User Profile & Options Menu */}

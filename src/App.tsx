@@ -34,6 +34,7 @@ import { PhoneAuthModal } from './components/PhoneAuthModal';
 import { IncomeView } from './components/IncomeView';
 import { LandingPage } from './components/LandingPage';
 import { AdminConsole } from './components/AdminConsole';
+import { NotificationCenterModal } from './components/NotificationCenterModal';
 
 import {
   Category,
@@ -116,6 +117,7 @@ export default function App() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(() => !loadUserProfile().isOnboarded);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'profile' | 'login' | 'signup' | 'reset'>('profile');
 
   // Core Data States (Strictly isolated per authenticated user - New users start with ZERO data)
@@ -789,6 +791,8 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenAdmin={handleOpenAdmin}
+        pendingRecurringCount={recurring.filter((r) => r.status === 'active').length}
+        onOpenNotifications={() => setIsNotificationCenterOpen(true)}
       />
 
       {/* Main Container */}
@@ -1266,6 +1270,13 @@ export default function App() {
         initialTab={phoneAuthInitialTab}
         onClose={() => setIsPhoneAuthOpen(false)}
         onSuccess={handlePhoneAuthSuccess}
+      />
+
+      <NotificationCenterModal
+        isOpen={isNotificationCenterOpen}
+        onClose={() => setIsNotificationCenterOpen(false)}
+        recurringExpenses={recurring}
+        onNavigateToSubscriptions={() => setActiveTab('subscriptions')}
       />
     </div>
   );
