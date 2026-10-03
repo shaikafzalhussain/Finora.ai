@@ -196,7 +196,7 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({ user
           type="text"
           value={sheetUrlInput}
           onChange={(e) => setSheetUrlInput(e.target.value)}
-          placeholder="Paste your custom Google Sheet URL or Spreadsheet ID here..."
+          placeholder="https://docs.google.com/spreadsheets/d/1q7ScyS4Zq4mDHw9026YDzPTyrX0zkklA6XYbElM6DcA/edit?gid=0#gid=0"
           className="w-full bg-transparent px-2 py-1.5 text-xs text-white placeholder-slate-500 outline-none"
         />
         <button
