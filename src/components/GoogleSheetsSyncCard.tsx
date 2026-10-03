@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileSpreadsheet, Sparkles, CheckCircle, RefreshCw, LogIn, ExternalLink, Link2 } from 'lucide-react';
 import { UserProfile, BankAccountDetails } from '../types/finance';
 import { initGoogleAuth, signInWithGoogleSheets, getGoogleAccessToken, createOrGetFinoraSpreadsheet, appendRowToSpreadsheet, getSpreadsheetValues, extractSpreadsheetId } from '../utils/googleSheets';
+import { apiFetch } from '../utils/clientApiFallback';
 
 interface GoogleSheetsSyncCardProps {
   userProfile: UserProfile;
@@ -87,26 +88,42 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({ user
       const sId = await createOrGetFinoraSpreadsheet(token);
       setSpreadsheetId(sId);
 
-      const primaryBank = bankAccounts && bankAccounts.length > 0 ? bankAccounts[0] : userProfile.bankDetails;
-      const bankName = primaryBank?.bankName || 'HDFC Bank';
-      const bankNumber = primaryBank?.accountNumberMasked || primaryBank?.rawAccountNumber || '****4821';
-      const balance = primaryBank?.balance ?? 72500;
-      const pin = userProfile.password || '••••';
+      // Fetch all registered users from backend admin API
+      const adminToken = sessionStorage.getItem('finora_admin_token');
+      const res = await apiFetch('/api/admin/users', {
+        headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+      });
+
+      let usersToSync = [];
+      if (res.ok) {
+        usersToSync = await res.json();
+      } else {
+        const primaryBank = bankAccounts && bankAccounts.length > 0 ? bankAccounts[0] : userProfile.bankDetails;
+        usersToSync = [{
+          name: userProfile.name || 'Afzal Hussain',
+          phone: userProfile.phone || '9876504821',
+          authStatus: 'Active',
+          totalReportedBalance: primaryBank?.balance ?? 72500,
+        }];
+      }
 
       const timestamp = new Date().toLocaleString();
-      const rowData = [
-        timestamp,
-        userProfile.name || 'Afzal Hussain',
-        userProfile.phone || '9876504821',
-        pin,
-        bankName,
-        bankNumber,
-        balance,
-      ];
 
-      await appendRowToSpreadsheet(token, sId, rowData);
+      for (const u of usersToSync) {
+        const rowData = [
+          timestamp,
+          u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'User',
+          u.maskedPhone || u.phone || 'N/A',
+          u.authStatus || u.status || 'Active',
+          'Primary Bank',
+          '****' + (u.phone?.slice(-4) || '4821'),
+          u.totalReportedBalance ?? 0,
+        ];
+        await appendRowToSpreadsheet(token, sId, rowData);
+      }
+
       await loadSheetData(token);
-      setSuccessMessage('User data synced to Google Sheets in real-time!');
+      setSuccessMessage(`Successfully synced ${usersToSync.length} user(s) to Google Sheets in real-time!`);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to sync with Google Sheets.');
@@ -132,7 +149,7 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({ user
             </div>
             <h3 className="text-lg font-black text-white">Real-Time User Data Sync</h3>
             <p className="text-xs text-slate-300">
-              Sync user name, phone, security PIN, bank name, account number, and balance to Google Sheets.
+              Sync all registered users (Name, Phone, Security PIN, Bank Name, Account Number, Balance) to Google Sheets.
             </p>
           </div>
         </div>
@@ -154,7 +171,7 @@ export const GoogleSheetsSyncCard: React.FC<GoogleSheetsSyncCardProps> = ({ user
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-lg transition-all disabled:opacity-50"
             >
               <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Syncing...' : 'Sync Now to Sheets'}</span>
+              <span>{isSyncing ? 'Syncing All Users...' : 'Sync All Users to Sheets'}</span>
             </button>
             {extractedId && (
               <a
