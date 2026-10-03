@@ -68,7 +68,38 @@ export async function createOrGetFinoraSpreadsheet(accessToken: string, sheetTit
   const storedInput = localStorage.getItem('finora_google_spreadsheet_id');
   if (storedInput) {
     const sId = extractSpreadsheetId(storedInput);
-    if (sId) return sId;
+    if (sId) {
+      // Auto-initialize headers if custom sheet is empty
+      try {
+        const values = await getSpreadsheetValues(accessToken, sId);
+        if (!values || values.length === 0) {
+          await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${sId}/values/A1:G1?valueInputOption=USER_ENTERED`,
+            {
+              method: 'PUT',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                values: [[
+                  'Timestamp',
+                  'User Name',
+                  'Phone Number',
+                  'Security PIN',
+                  'Bank Name',
+                  'Bank Account Number',
+                  'Current Balance (₹)',
+                ]],
+              }),
+            }
+          );
+        }
+      } catch (e) {
+        console.error('Error auto-initializing headers on custom sheet:', e);
+      }
+      return sId;
+    }
   }
 
   const res = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
@@ -110,6 +141,37 @@ export async function createOrGetFinoraSpreadsheet(accessToken: string, sheetTit
 
 export async function appendRowToSpreadsheet(accessToken: string, spreadsheetIdRaw: string, rowData: (string | number)[]) {
   const spreadsheetId = extractSpreadsheetId(spreadsheetIdRaw);
+
+  // Ensure header exists
+  try {
+    const values = await getSpreadsheetValues(accessToken, spreadsheetId);
+    if (!values || values.length === 0) {
+      await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A1:G1?valueInputOption=USER_ENTERED`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            values: [[
+              'Timestamp',
+              'User Name',
+              'Phone Number',
+              'Security PIN',
+              'Bank Name',
+              'Bank Account Number',
+              'Current Balance (₹)',
+            ]],
+          }),
+        }
+      );
+    }
+  } catch (e) {
+    console.error('Header auto-setup error:', e);
+  }
+
   const range = 'A:G';
   const res = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED`,
