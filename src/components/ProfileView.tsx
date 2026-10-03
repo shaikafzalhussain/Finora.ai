@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import { UserProfile, BankAccountDetails } from '../types/finance';
 import { formatCurrency } from '../utils/formatters';
-import { GoogleSheetsSyncCard } from './GoogleSheetsSyncCard';
 
 interface ProfileViewProps {
   user: UserProfile;
@@ -522,9 +521,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         )}
       </div>
-
-      {/* Google Sheets Live Sync */}
-      <GoogleSheetsSyncCard userProfile={user} bankAccounts={user.bankAccounts} />
     </div>
   );
 };

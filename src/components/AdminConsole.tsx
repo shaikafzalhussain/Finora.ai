@@ -24,8 +24,10 @@ import {
   Layers,
   ArrowLeft,
   Loader2,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
+import { GoogleSheetsSyncCard } from './GoogleSheetsSyncCard';
 
 interface AdminConsoleProps {
   onReturnToApp: () => void;
@@ -80,7 +82,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onReturnToApp }) => 
   const [loginError, setLoginError] = useState<string | null>(null);
 
   // Active Admin View
-  const [adminTab, setAdminTab] = useState<'overview' | 'users' | 'audit' | 'settings'>('overview');
+  const [adminTab, setAdminTab] = useState<'overview' | 'users' | 'audit' | 'settings' | 'sheets'>('overview');
 
   // Admin Data
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
@@ -493,6 +495,17 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onReturnToApp }) => 
           >
             PIN Rotation
           </button>
+          <button
+            onClick={() => setAdminTab('sheets')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              adminTab === 'sheets'
+                ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            }`}
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            <span>Google Sheets Live Sync</span>
+          </button>
         </div>
       </header>
 
@@ -903,6 +916,22 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onReturnToApp }) => 
                 )}
               </button>
             </form>
+          </div>
+        )}
+
+        {/* --- VIEW 5: GOOGLE SHEETS LIVE SYNC (Admin Only) --- */}
+        {adminTab === 'sheets' && (
+          <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-150">
+            <GoogleSheetsSyncCard
+              userProfile={{
+                id: 'admin-master',
+                name: 'Shaik Afzal Hussain (Admin)',
+                phone: '7702994407',
+                isOnboarded: true,
+                isAuthenticated: true,
+                createdAt: new Date().toISOString(),
+              }}
+            />
           </div>
         )}
       </main>
