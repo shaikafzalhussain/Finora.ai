@@ -142,7 +142,7 @@ export interface SmartAlert {
 
 export interface BudgetOptimizationResult {
   healthScore: number; // 0 - 100
-  healthStatus: 'Excellent' | 'Good' | 'Needs Attention' | 'Critical';
+  healthStatus: 'Excellent' | 'Good' | 'Needs Attention' | 'Critical' | 'Awaiting Data';
   summary: string;
   whatHappened: string;
   whyItHappened: string;
