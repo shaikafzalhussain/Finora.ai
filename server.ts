@@ -209,8 +209,9 @@ app.put('/api/admin/change-pin', requireAdmin, (req, res) => {
 });
 
 // Initialize shared Gemini client
+const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+  apiKey: GEMINI_KEY,
   httpOptions: {
     headers: {
       'User-Agent': 'aistudio-build',
