@@ -691,6 +691,46 @@ export default function App() {
     );
   };
 
+  const handleMarkRecurringAsPaid = (id: string) => {
+    const item = recurring.find((r) => r.id === id);
+    if (!item) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const primaryAcc = userProfile.bankAccounts?.[0] || userProfile.bankDetails;
+
+    handleSaveTransaction({
+      amount: item.amount,
+      merchant: item.name,
+      categoryId: item.categoryId,
+      date: today,
+      type: 'expense',
+      paymentMethod: 'upi',
+      accountId: primaryAcc?.id,
+      notes: `Marked as paid: ${item.name} (${item.billingCycle})`,
+      tags: ['recurring-paid'],
+    });
+
+    setRecurring((prev) =>
+      prev.map((r) => {
+        if (r.id === id) {
+          const d = new Date(r.nextDueDate || today);
+          if (r.billingCycle === 'yearly') {
+            d.setFullYear(d.getFullYear() + 1);
+          } else if (r.billingCycle === 'quarterly') {
+            d.setMonth(d.getMonth() + 3);
+          } else {
+            d.setMonth(d.getMonth() + 1);
+          }
+          return {
+            ...r,
+            nextDueDate: d.toISOString().split('T')[0],
+          };
+        }
+        return r;
+      })
+    );
+  };
+
   const handleAddGoal = (goal: Omit<SavingsGoal, 'id'>) => {
     const newGoal: SavingsGoal = {
       ...goal,
@@ -1133,6 +1173,7 @@ export default function App() {
             onDeleteRecurring={handleDeleteRecurring}
             onUpdateStatus={handleUpdateRecurringStatus}
             onUpdateUtility={handleUpdateSubscriptionUtility}
+            onMarkAsPaid={handleMarkRecurringAsPaid}
           />
         )}
 

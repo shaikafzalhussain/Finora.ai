@@ -23,6 +23,7 @@ interface RecurringExpensesViewProps {
   onDeleteRecurring: (id: string) => void;
   onUpdateStatus: (id: string, status: 'active' | 'flagged' | 'cancelled') => void;
   onUpdateUtility?: (id: string, utility: SubscriptionUtility) => void;
+  onMarkAsPaid?: (id: string) => void;
 }
 
 export const RecurringExpensesView: React.FC<RecurringExpensesViewProps> = ({
@@ -32,6 +33,7 @@ export const RecurringExpensesView: React.FC<RecurringExpensesViewProps> = ({
   onDeleteRecurring,
   onUpdateStatus,
   onUpdateUtility,
+  onMarkAsPaid,
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState('');
@@ -377,6 +379,17 @@ export const RecurringExpensesView: React.FC<RecurringExpensesViewProps> = ({
                       <option value="useful">Useful</option>
                       <option value="unnecessary">Unnecessary</option>
                     </select>
+
+                    {item.status === 'active' && (
+                      <button
+                        onClick={() => onMarkAsPaid?.(item.id)}
+                        className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 shadow-sm transition-colors"
+                        title="Mark this payment as paid and advance next due date"
+                      >
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        <span>Mark Paid</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => onUpdateStatus(item.id, item.status === 'active' ? 'cancelled' : 'active')}
