@@ -297,7 +297,7 @@ export const AIBudgetOptimizerView: React.FC<AIBudgetOptimizerViewProps> = ({
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3">
               <Brain className="h-3.5 w-3.5" />
-              <span>AI Auditor • Gemini 3.8 Flash</span>
+              <span>AI Auditor • NVIDIA Nemotron LLM</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
               FINORA AI Auditor

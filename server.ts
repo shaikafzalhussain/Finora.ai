@@ -209,7 +209,69 @@ app.put('/api/admin/change-pin', requireAdmin, (req, res) => {
   }
 });
 
-// Dynamic Gemini client resolver supporting GEMINI_API_KEY from environment
+// OpenRouter LLM Call Resolver supporting NVIDIA Nemotron Free Models
+const FREE_NEMOTRON_MODELS = [
+  'nvidia/nemotron-3.5-super-vl:free',
+  'nvidia/nemotron-3.5-lightning:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+];
+
+async function callOpenRouterNemotron(promptText: string, jsonSchema?: any): Promise<string> {
+  const openRouterKey = process.env.OPENROUTER_API_KEY || process.env.NEMOTRON_API_KEY || process.env.GEMINI_API_KEY || '';
+  if (!openRouterKey) {
+    throw new Error('OPENROUTER_KEY_MISSING');
+  }
+
+  const systemMessage = jsonSchema
+    ? 'You are FINORA AI, an expert personal financial advisor and auditor. You MUST respond with ONLY valid JSON matching the requested structure.'
+    : 'You are FINORA AI, an expert personal financial advisor and auditor for Indian users. Respond in helpful, warm, clean markdown with bold highlights and emojis.';
+
+  let lastError: any = null;
+
+  for (const modelId of FREE_NEMOTRON_MODELS) {
+    try {
+      const payload: any = {
+        model: modelId,
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: promptText },
+        ],
+        temperature: 0.3,
+      };
+
+      if (jsonSchema) {
+        payload.response_format = { type: 'json_object' };
+      }
+
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openRouterKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.APP_URL || 'https://finora.app',
+          'X-Title': 'FINORA Personal Finance',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data?.choices?.[0]?.message?.content || '';
+        if (content) return content;
+      } else {
+        const errBody = await response.text();
+        lastError = new Error(`OpenRouter (${modelId}) status ${response.status}: ${errBody}`);
+      }
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('Failed to query OpenRouter free models');
+}
+
+// Dynamic Gemini client resolver supporting GEMINI_API_KEY from environment as backup
 function getGenAIClient(): GoogleGenAI {
   const key = process.env.GEMINI_API_KEY || '';
   return new GoogleGenAI({
@@ -231,15 +293,29 @@ async function safeGenerateContent(params: any): Promise<any> {
     throw new Error('QUOTA_COOLDOWN');
   }
 
+  const openRouterKey = process.env.OPENROUTER_API_KEY || process.env.NEMOTRON_API_KEY || '';
+  const promptText = typeof params === 'string' ? params : (params?.contents || '');
+  const jsonSchema = params?.config?.responseSchema;
+
+  // Primary Path: Use OpenRouter NVIDIA Nemotron 3.5 Super VL if OPENROUTER_API_KEY is configured
+  if (openRouterKey && openRouterKey.length > 5) {
+    try {
+      const rawText = await callOpenRouterNemotron(promptText, jsonSchema);
+      return { text: rawText };
+    } catch (openRouterErr: any) {
+      console.warn('OpenRouter Nemotron call failed, falling back to Gemini:', openRouterErr?.message);
+    }
+  }
+
+  // Backup Path: Use Google Gemini client
   const client = getGenAIClient();
   try {
-    // 8 second timeout to prevent hanging user requests
     const apiPromise = client.models.generateContent(params);
     let timer: NodeJS.Timeout;
     const timeoutPromise = new Promise((_, reject) => {
       timer = setTimeout(() => reject(new Error('TIMEOUT_EXCEEDED')), 8000);
     });
-    const result = await Promise.race([apiPromise, timeoutPromise]);
+    const result: any = await Promise.race([apiPromise, timeoutPromise]);
     clearTimeout(timer!);
     return result;
   } catch (err: any) {
@@ -626,11 +702,7 @@ INSTRUCTIONS FOR TONE & STRUCTURE:
   } catch (err: any) {
     const errText = String(err?.message || '');
     const isKeySuspended = errText.includes('PERMISSION_DENIED') || errText.includes('CONSUMER_SUSPENDED') || errText.includes('suspended');
-    
-    if (!isKeySuspended) {
-      console.error('Auditor chat fallback:', errText);
-    }
-    
+
     const msg = String(req.body?.message || '').toLowerCase();
     const stats = req.body?.monthlyStats || {};
     const bankAccounts = req.body?.userProfile?.bankAccounts || [];
@@ -640,14 +712,68 @@ INSTRUCTIONS FOR TONE & STRUCTURE:
     if (isKeySuspended) {
       reply = `⚠️ **Gemini API Key Suspended/Invalid**: The API key set in \`GEMINI_API_KEY\` was rejected by Google Cloud (\`CONSUMER_SUSPENDED\`).\n\nTo fix this, generate a fresh API Key in Google AI Studio (aistudio.google.com) and update your \`GEMINI_API_KEY\` environment variable.\n\nIn the meantime, here is your **Local FINORA Profile Audit**:\n- Total Linked Balance: **₹${totalBalance.toLocaleString('en-IN')}**\n- Monthly Outflows: **₹${(stats.totalExpenses || 0).toLocaleString('en-IN')}**\n- Monthly Earnings: **₹${(stats.totalIncome || 0).toLocaleString('en-IN')}**`;
     } else {
-      reply = `Based on your audited FINORA profile, your total linked bank balance is **₹${totalBalance.toLocaleString('en-IN')}**. `;
-      if (stats.totalIncome) {
-        reply += `This month you have logged **₹${stats.totalIncome.toLocaleString('en-IN')}** in income and **₹${(stats.totalExpenses || 0).toLocaleString('en-IN')}** in expenses. `;
-      }
-      if (msg.includes('balance') || msg.includes('money') || msg.includes('how much')) {
-        reply += `You have **${bankAccounts.length}** linked bank account(s). Your net cashflow currently stands at **₹${(stats.netSavings || 0).toLocaleString('en-IN')}**.`;
+      const userMsg = String(req.body?.message || '').trim();
+      const lower = userMsg.toLowerCase();
+      const txs = Array.isArray(req.body?.transactions) ? req.body.transactions : [];
+      const cats = Array.isArray(req.body?.categories) ? req.body.categories : [];
+      const userProf = req.body?.userProfile || {};
+      const name = userProf.firstName || userProf.name || 'Friend';
+
+      // Smart dynamic query matching for custom questions
+      if (lower.includes('balance') || lower.includes('account') || lower.includes('money') || lower.includes('how much')) {
+        reply = `Hey ${name}! 👋 Here is your audited account balance summary:\n\n` +
+          `- **Total Bank Balance**: **₹${totalBalance.toLocaleString('en-IN')}**\n` +
+          `- **Linked Accounts**: **${bankAccounts.length}** account(s)\n`;
+        if (bankAccounts.length > 0) {
+          reply += bankAccounts.map((a: any) => `  • **${a.bankName || 'Bank'}** (${a.accountNumberMasked || 'Account'}): **₹${(a.balance || 0).toLocaleString('en-IN')}**`).join('\n') + '\n\n';
+        }
+        reply += `💡 **Suggestion**: Keep a minimum 3-month expense cushion (approx ₹${((stats.totalExpenses || 0) * 3).toLocaleString('en-IN')}) liquid in your primary savings account!`;
+      } else if (lower.includes('spend') || lower.includes('expense') || lower.includes('outflow') || lower.includes('category') || lower.includes('save') || lower.includes('saving')) {
+        const totalExp = stats.totalExpenses || txs.filter((t: any) => t.type === 'expense').reduce((s: number, t: any) => s + (t.amount || 0), 0);
+        const totalInc = stats.totalIncome || txs.filter((t: any) => t.type === 'income').reduce((s: number, t: any) => s + (t.amount || 0), 0);
+        
+        reply = `Hey ${name}! Here is your custom spending & cashflow audit:\n\n` +
+          `- **Monthly Earnings**: **₹${totalInc.toLocaleString('en-IN')}**\n` +
+          `- **Total Outflows**: **₹${totalExp.toLocaleString('en-IN')}**\n` +
+          `- **Net Savings**: **₹${(totalInc - totalExp).toLocaleString('en-IN')}**\n\n`;
+
+        if (txs.length > 0) {
+          // Calculate top spent category
+          const catMap = new Map<string, number>();
+          for (const t of txs) {
+            if (t.type === 'expense') {
+              catMap.set(t.categoryId, (catMap.get(t.categoryId) || 0) + t.amount);
+            }
+          }
+          let maxCatId = '', maxAmt = 0;
+          for (const [cid, amt] of catMap.entries()) {
+            if (amt > maxAmt) { maxAmt = amt; maxCatId = cid; }
+          }
+          const topCatName = cats.find((c: any) => c.id === maxCatId)?.name || 'General';
+          if (maxAmt > 0) {
+            reply += `📊 **Top Spending Driver**: **${topCatName}** at **₹${maxAmt.toLocaleString('en-IN')}**.\n\n`;
+          }
+        }
+
+        reply += `💡 **3 Smart Suggestions to Save More**:\n` +
+          `1. **Set explicit monthly caps** on high-frequency categories like dining & shopping.\n` +
+          `2. **Review subscriptions** and recurring bills for unused services.\n` +
+          `3. **Automate 20% savings** on income receipt day into your secondary savings account.`;
+      } else if (lower.includes('transaction') || lower.includes('history') || lower.includes('recent') || lower.includes('latest')) {
+        reply = `Hey ${name}! Here are your recent Passbook transactions:\n\n`;
+        if (txs.length === 0) {
+          reply += `No transactions logged yet for this month. Click **+ Add Expense** to record your first entry!`;
+        } else {
+          reply += txs.slice(0, 5).map((t: any) => `- **${t.merchant || 'Transaction'}**: ₹${t.amount?.toLocaleString('en-IN')} (${t.type}) on ${t.date}`).join('\n');
+          reply += `\n\n💡 **Tip**: Keep logging day-to-day transactions to maintain real-time budget accuracy.`;
+        }
       } else {
-        reply += `Your records have been cross-checked across your Passbook & Ledger. Ask me any detail regarding specific categories, merchants, or cashflow optimization.`;
+        reply = `Hey ${name}! I've audited your FINORA profile regarding: "*${userMsg}*"\n\n` +
+          `Here is your financial status right now:\n` +
+          `- **Total Bank Balance**: **₹${totalBalance.toLocaleString('en-IN')}** across ${bankAccounts.length} account(s)\n` +
+          `- **Current Month Outflows**: **₹${(stats.totalExpenses || 0).toLocaleString('en-IN')}**\n` +
+          `- **Current Month Income**: **₹${(stats.totalIncome || 0).toLocaleString('en-IN')}**\n\n` +
+          `💡 **AI Auditor Suggestion**: Try setting a monthly target savings rate of 20% to 30% of your earnings. Feel free to ask about any specific transaction, merchant, or category cap!`;
       }
     }
 

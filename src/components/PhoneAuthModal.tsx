@@ -232,6 +232,7 @@ export const PhoneAuthModal: React.FC<PhoneAuthModalProps> = ({
         ...existing,
         isAuthenticated: true,
       };
+      saveUserProfile(authenticatedUser);
       setFeedback(`Welcome back, ${existing.firstName || existing.name.split(' ')[0]} 👋`);
       setTimeout(() => onSuccess(authenticatedUser), 600);
     } else {
@@ -337,7 +338,8 @@ export const PhoneAuthModal: React.FC<PhoneAuthModalProps> = ({
   // 3. User chooses to skip bank configuration for now
   const handleSkipBank = () => {
     if (!createdUser) return;
-    setFeedback(`Welcome back, ${createdUser.firstName} 👋`);
+    saveUserProfile(createdUser);
+    setFeedback(`Welcome, ${createdUser.firstName} 👋 Workspace ready!`);
     setTimeout(() => onSuccess(createdUser), 500);
   };
 
@@ -372,6 +374,7 @@ export const PhoneAuthModal: React.FC<PhoneAuthModalProps> = ({
     const existingUsers = loadRegisteredUsers();
     const updatedList = existingUsers.map((u) => (u.id === updatedUser.id ? updatedUser : u));
     saveRegisteredUsers(updatedList);
+    saveUserProfile(updatedUser);
 
     // Sync newly added bank account to server
     const token = sessionStorage.getItem('finora_user_token');
@@ -389,7 +392,7 @@ export const PhoneAuthModal: React.FC<PhoneAuthModalProps> = ({
       }).catch(console.error);
     }
 
-    setFeedback(`Welcome back, ${updatedUser.firstName} 👋 Bank account linked!`);
+    setFeedback(`Welcome, ${updatedUser.firstName} 👋 Bank account linked!`);
     setTimeout(() => onSuccess(updatedUser), 600);
   };
 
