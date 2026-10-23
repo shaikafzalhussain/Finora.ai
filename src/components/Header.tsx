@@ -101,7 +101,6 @@ export const Header: React.FC<HeaderProps> = ({
   const NAV_TABS = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'transactions', label: 'Passbook & Ledger' },
-    { id: 'budgets', label: 'Budgets' },
     { id: 'analytics', label: 'Analytics' },
     { id: 'coach', label: 'AI Money Coach', badge: 'Active' },
     { id: 'ai-optimizer', label: 'AI Health Audit', badge: 'Smart' },

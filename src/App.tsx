@@ -8,15 +8,12 @@ import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobileHeroCard } from './components/MobileHeroCard';
 import { SpendVelocityChart } from './components/SpendVelocityChart';
-import { CategorySpendBars } from './components/CategorySpendBars';
 import { TransactionsTable } from './components/TransactionsTable';
 import { AIBudgetOptimizerView } from './components/AIBudgetOptimizerView';
 import { AIMoneyCoachView } from './components/AIMoneyCoachView';
 import { AnalyticsView } from './components/AnalyticsView';
-import { BudgetsView } from './components/BudgetsView';
 import { MonthlyReportView } from './components/MonthlyReportView';
 import { SmartAlertsBanner } from './components/SmartAlertsBanner';
-import { WhatIfSimulator } from './components/WhatIfSimulator';
 import { TransactionModal } from './components/TransactionModal';
 import { NaturalLanguageModal } from './components/NaturalLanguageModal';
 import { ReceiptScannerModal } from './components/ReceiptScannerModal';
@@ -25,7 +22,6 @@ import { OnboardingModal } from './components/OnboardingModal';
 import { BankDetailsModal } from './components/BankDetailsModal';
 import { AuthModal } from './components/AuthModal';
 import { BalanceInsightsCard } from './components/BalanceInsightsCard';
-import { UpcomingPaymentsCard } from './components/UpcomingPaymentsCard';
 import { ProfileView } from './components/ProfileView';
 import { PhoneAuthModal } from './components/PhoneAuthModal';
 import { IncomeView } from './components/IncomeView';
@@ -523,8 +519,8 @@ export default function App() {
           exceeded[0].spent - exceeded[0].budget
         )}.`,
         date: currentMonthKey,
-        actionText: 'Adjust Cap',
-        actionLink: 'budgets',
+        actionText: 'View in Ledger',
+        actionLink: 'transactions',
       });
     }
 
@@ -928,13 +924,6 @@ export default function App() {
               totalBalance={userProfile.bankDetails?.balance ?? 0}
             />
 
-            {/* Upcoming Payments Card (Electricity, SIP, Mobile Recharge) */}
-            <UpcomingPaymentsCard
-              payments={upcomingPayments}
-              onToggleStatus={handleToggleUpcomingStatus}
-              onViewAll={() => setActiveTab('analytics')}
-            />
-
             {/* AI Financial Insight Card (Strictly Zero Assumptions on Fresh Users) */}
             <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-r from-indigo-950/70 via-slate-900 to-slate-900 border border-indigo-500/30 p-5 sm:p-6 shadow-xl">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -999,29 +988,11 @@ export default function App() {
               </div>
             </div>
 
-            {/* Interactive What-If Simulator right on Dashboard */}
-            <WhatIfSimulator
-              categories={categories}
-              totalMonthlyExpenses={monthlyStats.totalExpenses}
-              totalMonthlyIncome={monthlyStats.totalIncome}
-            />
-
             {/* Spend Velocity Curve */}
             <SpendVelocityChart
               points={spendVelocityPoints}
               stats={monthlyStats}
               monthName={formattedMonthName}
-            />
-
-            {/* Category Budgets Grid */}
-            <CategorySpendBars
-              categoriesSummary={categoriesSummary}
-              onUpdateBudget={handleUpdateCategoryBudget}
-              onFilterCategory={(catId) => {
-                setSelectedCategoryId(catId);
-                setActiveTab('transactions');
-              }}
-              selectedCategoryId={selectedCategoryId}
             />
 
             {/* Recent Transactions Snippet */}
@@ -1129,19 +1100,6 @@ export default function App() {
               onClearCategoryFilter={() => setSelectedCategoryId(null)}
             />
           </div>
-        )}
-
-        {/* 3. BUDGETS */}
-        {activeTab === 'budgets' && (
-          <BudgetsView
-            categories={categories}
-            totalExpenses={monthlyStats.totalExpenses}
-            totalBudgetedExpenses={monthlyStats.totalBudgetedExpenses}
-            onUpdateBudget={handleUpdateCategoryBudget}
-            onAddCategory={handleAddCategory}
-            onDeleteCategory={handleDeleteCategory}
-            onOpenOptimizer={() => setActiveTab('ai-optimizer')}
-          />
         )}
 
         {/* 4. ANALYTICS (Contains SavingsHeatmap) */}
