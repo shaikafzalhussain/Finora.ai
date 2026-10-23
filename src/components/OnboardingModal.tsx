@@ -87,11 +87,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     const numBalance = initialBalance.trim() ? parseFloat(initialBalance) : 0;
 
     const bankDetails: BankAccountDetails = {
+      id: `acc-${Date.now()}`,
       bankName: effectiveBankName,
       accountNumberMasked: maskedDisplay,
       accountNumberLast4: last4,
       accountType: accountType,
       balance: isNaN(numBalance) ? 0 : numBalance,
+      nickname: 'Primary Account',
+      isPrimary: true,
       rawAccountNumber: cleanAccountNum,
     };
 
@@ -99,6 +102,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       name: name.trim(),
       isOnboarded: true,
       bankDetails,
+      bankAccounts: [bankDetails],
     });
   };
 

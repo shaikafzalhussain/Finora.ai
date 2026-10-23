@@ -308,13 +308,18 @@ export default function App() {
   };
 
   const handleCompleteOnboarding = (profileData: Partial<UserProfile>) => {
+    const bankDetails = profileData.bankDetails || userProfile.bankDetails;
+    const bankAccounts = profileData.bankAccounts || (bankDetails ? [bankDetails] : userProfile.bankAccounts || []);
     const updated = {
       ...userProfile,
       ...profileData,
+      bankDetails,
+      bankAccounts,
       isOnboarded: true,
       isAuthenticated: true,
     };
     setUserProfile(updated);
+    saveUserProfile(updated);
     setIsOnboardingOpen(false);
   };
 
@@ -343,16 +348,34 @@ export default function App() {
   };
 
   const handleLogin = (user: UserProfile) => {
-    setUserProfile(user);
+    const bankDetails = user.bankDetails || (user.bankAccounts && user.bankAccounts.length > 0 ? user.bankAccounts[0] : undefined);
+    const bankAccounts = user.bankAccounts && user.bankAccounts.length > 0 ? user.bankAccounts : (bankDetails ? [bankDetails] : []);
+    const normalizedUser: UserProfile = {
+      ...user,
+      bankDetails,
+      bankAccounts,
+      isAuthenticated: true,
+    };
+    setUserProfile(normalizedUser);
+    saveUserProfile(normalizedUser);
     setIsAuthModalOpen(false);
   };
 
   const handlePhoneAuthSuccess = (authenticatedUser: UserProfile) => {
-    setUserProfile(authenticatedUser);
+    const bankDetails = authenticatedUser.bankDetails || (authenticatedUser.bankAccounts && authenticatedUser.bankAccounts.length > 0 ? authenticatedUser.bankAccounts[0] : undefined);
+    const bankAccounts = authenticatedUser.bankAccounts && authenticatedUser.bankAccounts.length > 0 ? authenticatedUser.bankAccounts : (bankDetails ? [bankDetails] : []);
+    const normalizedUser: UserProfile = {
+      ...authenticatedUser,
+      bankDetails,
+      bankAccounts,
+      isAuthenticated: true,
+    };
+    setUserProfile(normalizedUser);
+    saveUserProfile(normalizedUser);
     setIsPhoneAuthOpen(false);
 
     // Immediately load isolated dataset for this specific user
-    const userIdentifier = authenticatedUser.phone || authenticatedUser.id;
+    const userIdentifier = normalizedUser.phone || normalizedUser.id;
     const userTxs = loadTransactionsForUser(userIdentifier, currentMonthKey);
     const userRec = loadRecurringForUser(userIdentifier);
     const userGls = loadGoalsForUser(userIdentifier);
