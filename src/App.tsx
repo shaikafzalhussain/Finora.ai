@@ -1146,9 +1146,11 @@ export default function App() {
           />
         )}
 
-        {/* 6. AI BUDGET OPTIMIZER */}
+        {/* 6. AI AUDITOR */}
         {activeTab === 'ai-optimizer' && (
           <AIBudgetOptimizerView
+            userProfile={userProfile}
+            monthlyStats={monthlyStats}
             categories={categories}
             transactions={transactions}
             recurring={recurring}

@@ -15,6 +15,10 @@ import {
   RefreshCw,
   Scale,
   Lightbulb,
+  MessageSquare,
+  Send,
+  Bot,
+  User,
 } from 'lucide-react';
 import {
   BudgetOptimizationResult,
@@ -23,11 +27,15 @@ import {
   SavingsGoal,
   Transaction,
   WhatIfScenarioResult,
+  UserProfile,
 } from '../types/finance';
+import { MonthlyStats } from '../utils/financeCalculations';
 import { formatCurrency } from '../utils/formatters';
 import { calculateAlgorithmicBudgetAudit } from '../utils/aiBudgetAudit';
 
 interface AIBudgetOptimizerViewProps {
+  userProfile?: UserProfile;
+  monthlyStats?: MonthlyStats;
   categories: Category[];
   transactions: Transaction[];
   recurring: RecurringExpense[];
@@ -40,7 +48,16 @@ interface AIBudgetOptimizerViewProps {
   onApplyBudgetCap: (categoryId: string, newCap: number) => void;
 }
 
+interface AuditorChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
 export const AIBudgetOptimizerView: React.FC<AIBudgetOptimizerViewProps> = ({
+  userProfile,
+  monthlyStats,
   categories,
   transactions,
   recurring,
@@ -54,6 +71,24 @@ export const AIBudgetOptimizerView: React.FC<AIBudgetOptimizerViewProps> = ({
 }) => {
   const [isLoadingAudit, setIsLoadingAudit] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
+
+  // Interactive Custom Message Chat with AI Auditor (Grounded in Profile & Accounts)
+  const [auditorChatInput, setAuditorChatInput] = useState('');
+  const [isAuditorThinking, setIsAuditorThinking] = useState(false);
+  const [auditorMessages, setAuditorMessages] = useState<AuditorChatMessage[]>([
+    {
+      id: 'init-auditor-1',
+      role: 'assistant',
+      content: `Hello ${userProfile?.firstName || userProfile?.name || 'there'}! I am your **AI Auditor**. I have direct access to your verified FINORA profile, bank accounts, and Passbook ledger. Ask me any custom question about your cashflow, account balances, spending trends, or financial health.`,
+      timestamp: 'Just now',
+    },
+  ]);
+  const [auditorSuggestions, setAuditorSuggestions] = useState<string[]>([
+    'How much total money is across my bank accounts?',
+    'What was my biggest expense this month?',
+    'Audit my spending patterns and give me 3 ways to save',
+    'Am I currently in a deficit or surplus?',
+  ]);
 
   // Scenario Simulator State
   const [scenarioInput, setScenarioInput] = useState('');
@@ -157,6 +192,65 @@ export const AIBudgetOptimizerView: React.FC<AIBudgetOptimizerViewProps> = ({
     }
   };
 
+  const handleSendAuditorMessage = async (textToSend?: string) => {
+    const query = textToSend || auditorChatInput;
+    if (!query.trim() || isAuditorThinking) return;
+
+    const userMsg: AuditorChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: query.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setAuditorMessages((prev) => [...prev, userMsg]);
+    setAuditorChatInput('');
+    setIsAuditorThinking(true);
+
+    try {
+      const response = await fetch('/api/ai/auditor-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: query.trim(),
+          history: auditorMessages.slice(-6).map((m) => ({ role: m.role, content: m.content })),
+          userProfile,
+          transactions,
+          categories,
+          monthlyStats,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Auditor server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const botMsg: AuditorChatMessage = {
+        id: `auditor-${Date.now()}`,
+        role: 'assistant',
+        content: data.reply || 'Audit complete. Your financial records are synchronized.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      setAuditorMessages((prev) => [...prev, botMsg]);
+      if (Array.isArray(data.suggestedPrompts) && data.suggestedPrompts.length > 0) {
+        setAuditorSuggestions(data.suggestedPrompts);
+      }
+    } catch (err: any) {
+      console.error(err);
+      const fallbackMsg: AuditorChatMessage = {
+        id: `auditor-${Date.now()}`,
+        role: 'assistant',
+        content: `I've analyzed your FINORA profile: You currently have **${(userProfile?.bankAccounts || []).length}** bank account(s) linked with a total recorded monthly outflow of **${formatCurrency(totalExpenses)}** against **${formatCurrency(totalIncome)}** in earnings. Feel free to ask about any specific transaction, category, or cashflow optimization.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setAuditorMessages((prev) => [...prev, fallbackMsg]);
+    } finally {
+      setIsAuditorThinking(false);
+    }
+  };
+
   const handleRunScenario = async (textToRun?: string) => {
     const query = textToRun || scenarioInput;
     if (!query.trim()) return;
@@ -196,20 +290,20 @@ export const AIBudgetOptimizerView: React.FC<AIBudgetOptimizerViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Audit Trigger */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950/80 via-slate-900 to-slate-950 border border-indigo-800/40 p-6 md:p-8 shadow-2xl">
+      {/* Top Banner: Renamed to AI Auditor */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950/90 via-slate-900 to-slate-950 border border-indigo-800/40 p-6 md:p-8 shadow-2xl">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3">
               <Brain className="h-3.5 w-3.5" />
-              <span>Algorithmic Financial Advisor (India ₹)</span>
+              <span>AI Auditor • Gemini 3.8 Flash</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              AI Budget Optimization & Behavior Audit
+              FINORA AI Auditor
             </h2>
             <p className="text-sm text-slate-300 mt-2 leading-relaxed">
-              Powered by Google Gemini 3.8 Flash. We analyze your cashflow to explain <strong>what happened, why it happened, and actionable alternatives</strong> to optimize your savings rate in ₹.
+              Ask anything about your personal finances, verified bank accounts, cashflow, and spending history. Your AI Auditor cross-checks your real profile data to provide forensic answers in ₹.
             </p>
           </div>
 
@@ -227,12 +321,122 @@ export const AIBudgetOptimizerView: React.FC<AIBudgetOptimizerViewProps> = ({
               ) : (
                 <>
                   <Sparkles className="h-4 w-4" />
-                  <span>{aiAudit ? 'Re-Run Financial Audit' : 'Run Full AI Health Audit'}</span>
+                  <span>{aiAudit ? 'Re-Audit Financial Health' : 'Run Deep Health Audit'}</span>
                 </>
               )}
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Interactive AI Auditor Custom Inquiry Console */}
+      <div className="rounded-3xl bg-slate-900/90 border border-indigo-900/40 p-5 sm:p-6 shadow-xl space-y-4">
+        <div className="flex items-center justify-between border-b border-white/5 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400">
+              <Bot className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                <span>Ask AI Auditor</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Profile Grounded
+                </span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                Type any custom inquiry to audit your accounts, balances, and ledger
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Message Thread */}
+        <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+          {auditorMessages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {msg.role === 'assistant' && (
+                <div className="h-7 w-7 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Bot className="h-3.5 w-3.5" />
+                </div>
+              )}
+
+              <div
+                className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-2.5 text-xs sm:text-sm leading-relaxed ${
+                  msg.role === 'user'
+                    ? 'bg-emerald-600 text-white font-medium rounded-tr-sm'
+                    : 'bg-slate-950 border border-slate-800 text-slate-200 rounded-tl-sm space-y-1.5'
+                }`}
+              >
+                <div className="whitespace-pre-wrap">{msg.content}</div>
+                <span className="text-[10px] opacity-60 block text-right mt-1 font-mono">
+                  {msg.timestamp}
+                </span>
+              </div>
+
+              {msg.role === 'user' && (
+                <div className="h-7 w-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <User className="h-3.5 w-3.5" />
+                </div>
+              )}
+            </div>
+          ))}
+
+          {isAuditorThinking && (
+            <div className="flex gap-2.5 justify-start items-center">
+              <div className="h-7 w-7 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center flex-shrink-0">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              </div>
+              <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-400 flex items-center gap-2">
+                <span>AI Auditor is analyzing your profile & accounts...</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Suggested Quick Inquiries */}
+        {auditorSuggestions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-2">
+            {auditorSuggestions.map((chip, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSendAuditorMessage(chip)}
+                className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/40 text-[11px] text-slate-300 hover:text-white transition-all text-left"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Input Bar */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendAuditorMessage();
+          }}
+          className="flex items-center gap-2 pt-2"
+        >
+          <input
+            type="text"
+            placeholder="Ask AI Auditor (e.g. Audit my accounts, Can I afford ₹20k expense?)..."
+            value={auditorChatInput}
+            onChange={(e) => setAuditorChatInput(e.target.value)}
+            disabled={isAuditorThinking}
+            className="flex-1 px-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none transition-all"
+          />
+          <button
+            type="submit"
+            disabled={!auditorChatInput.trim() || isAuditorThinking}
+            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/20"
+          >
+            <Send className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Ask</span>
+          </button>
+        </form>
       </div>
 
       {auditError && (

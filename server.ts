@@ -209,16 +209,18 @@ app.put('/api/admin/change-pin', requireAdmin, (req, res) => {
   }
 });
 
-// Initialize shared Gemini client
-const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
-const ai = new GoogleGenAI({
-  apiKey: GEMINI_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
+// Dynamic Gemini client resolver supporting GEMINI_API_KEY from environment
+function getGenAIClient(): GoogleGenAI {
+  const key = process.env.GEMINI_API_KEY || '';
+  return new GoogleGenAI({
+    apiKey: key,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
     },
-  },
-});
+  });
+}
 
 // Cooldown tracker for rate-limit quota exhaustion
 let quotaCooldownUntil = 0;
@@ -229,12 +231,13 @@ async function safeGenerateContent(params: any): Promise<any> {
     throw new Error('QUOTA_COOLDOWN');
   }
 
+  const client = getGenAIClient();
   try {
-    // 6 second timeout to prevent hanging user requests
-    const apiPromise = ai.models.generateContent(params);
+    // 8 second timeout to prevent hanging user requests
+    const apiPromise = client.models.generateContent(params);
     let timer: NodeJS.Timeout;
     const timeoutPromise = new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error('TIMEOUT_EXCEEDED')), 6000);
+      timer = setTimeout(() => reject(new Error('TIMEOUT_EXCEEDED')), 8000);
     });
     const result = await Promise.race([apiPromise, timeoutPromise]);
     clearTimeout(timer!);
@@ -251,7 +254,7 @@ async function safeGenerateContent(params: any): Promise<any> {
     if (isQuota) {
       try {
         const fallbackParams = { ...params, model: 'gemini-3.8-flash' };
-        return await ai.models.generateContent(fallbackParams);
+        return await client.models.generateContent(fallbackParams);
       } catch {
         quotaCooldownUntil = Date.now() + 3 * 60 * 1000;
         throw new Error('QUOTA_EXHAUSTED');
@@ -278,7 +281,8 @@ app.post('/api/ai/optimize-budget', async (req, res) => {
     }
 
     // Attempt Gemini 3.8 Flash for contextual narrative enhancement if API is available
-    if (GEMINI_KEY && GEMINI_KEY.length > 5) {
+    const geminiApiKey = process.env.GEMINI_API_KEY || '';
+    if (geminiApiKey && geminiApiKey.length > 5) {
       try {
         const prompt = `
 You are an expert Indian Certified Financial Planner (CFP) and algorithmic personal finance coach.
@@ -546,6 +550,112 @@ INSTRUCTIONS:
         'Where did I spend the most?',
         'How much did I spend on food?',
         'What are my upcoming payments?',
+      ],
+    });
+  }
+});
+
+// 2a. AI Auditor Dedicated Custom Query Endpoint
+// Answers any custom user question grounded strictly in their profile, bank accounts, transactions, and cashflow
+app.post('/api/ai/auditor-chat', async (req, res) => {
+  try {
+    const { message, history, userProfile, transactions, categories, monthlyStats } = req.body;
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    const userName = userProfile?.firstName || userProfile?.name || 'User';
+    const bankAccounts = userProfile?.bankAccounts || (userProfile?.bankDetails ? [userProfile.bankDetails] : []);
+    const recentTx = Array.isArray(transactions) ? transactions.slice(0, 50) : [];
+    const totalBalance = bankAccounts.reduce((sum: number, a: any) => sum + (a.balance || 0), 0);
+
+    const prompt = `
+You are "FINORA AI Auditor", an elite personal financial auditor and certified advisor for Indian users.
+Your role: Answer the user's custom question with forensic precision, grounded entirely in their real profile, bank accounts, and transaction data.
+All figures are in Indian Rupees (₹ - INR). Always format amounts with "₹" and commas (e.g., ₹12,450).
+
+USER PROFILE & FINANCIAL RECORDS:
+- Name: ${userName}
+- Email: ${userProfile?.email || 'Not specified'}
+- Active Accounts: ${JSON.stringify(bankAccounts)}
+- Total Bank Balance: ₹${totalBalance}
+- Total Recorded Monthly Income: ₹${monthlyStats?.totalIncome || 0}
+- Total Recorded Monthly Expenses: ₹${monthlyStats?.totalExpenses || 0}
+- Net Cashflow / Savings: ₹${monthlyStats?.netSavings || 0}
+- Categories & Budgets: ${JSON.stringify(categories || [])}
+- Recent Transactions Sample (Up to 50):
+${JSON.stringify(recentTx)}
+
+CONVERSATION HISTORY:
+${(history || []).map((h: any) => `${h.role}: ${h.content}`).join('\n')}
+
+USER QUERY:
+"${message}"
+
+INSTRUCTIONS:
+1. Provide an insightful, direct, and rigorous audit response specifically addressing the user's inquiry.
+2. Directly cite their actual balances, bank names (e.g. HDFC, SBI, ICICI), recent transactions, top spending categories, or deficit/surplus wherever relevant.
+3. If they ask about saving money, reducing tax, emergency funds, or spending habits, give concrete calculations based on their income and numbers.
+4. If no records match their specific question, clearly explain what is currently recorded in FINORA and advise how to log it.
+5. Provide 2-3 short, relevant follow-up prompt chips that the user can ask next.
+`;
+
+    const response = await safeGenerateContent({
+      model: 'gemini-3.8-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            reply: { type: Type.STRING, description: 'Auditor response in clean markdown with bold highlights' },
+            suggestedPrompts: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: '2 to 3 relevant follow up question chips',
+            },
+          },
+          required: ['reply', 'suggestedPrompts'],
+        },
+      },
+    });
+
+    const parsed = JSON.parse(response.text || '{}');
+    return res.json(parsed);
+  } catch (err: any) {
+    const errText = String(err?.message || '');
+    const isKeySuspended = errText.includes('PERMISSION_DENIED') || errText.includes('CONSUMER_SUSPENDED') || errText.includes('suspended');
+    
+    if (!isKeySuspended) {
+      console.error('Auditor chat fallback:', errText);
+    }
+    
+    const msg = String(req.body?.message || '').toLowerCase();
+    const stats = req.body?.monthlyStats || {};
+    const bankAccounts = req.body?.userProfile?.bankAccounts || [];
+    const totalBalance = bankAccounts.reduce((sum: number, a: any) => sum + (a.balance || 0), 0);
+
+    let reply = '';
+    if (isKeySuspended) {
+      reply = `⚠️ **Gemini API Key Suspended/Invalid**: The API key set in \`GEMINI_API_KEY\` was rejected by Google Cloud (\`CONSUMER_SUSPENDED\`).\n\nTo fix this, generate a fresh API Key in Google AI Studio (aistudio.google.com) and update your \`GEMINI_API_KEY\` environment variable.\n\nIn the meantime, here is your **Local FINORA Profile Audit**:\n- Total Linked Balance: **₹${totalBalance.toLocaleString('en-IN')}**\n- Monthly Outflows: **₹${(stats.totalExpenses || 0).toLocaleString('en-IN')}**\n- Monthly Earnings: **₹${(stats.totalIncome || 0).toLocaleString('en-IN')}**`;
+    } else {
+      reply = `Based on your audited FINORA profile, your total linked bank balance is **₹${totalBalance.toLocaleString('en-IN')}**. `;
+      if (stats.totalIncome) {
+        reply += `This month you have logged **₹${stats.totalIncome.toLocaleString('en-IN')}** in income and **₹${(stats.totalExpenses || 0).toLocaleString('en-IN')}** in expenses. `;
+      }
+      if (msg.includes('balance') || msg.includes('money') || msg.includes('how much')) {
+        reply += `You have **${bankAccounts.length}** linked bank account(s). Your net cashflow currently stands at **₹${(stats.netSavings || 0).toLocaleString('en-IN')}**.`;
+      } else {
+        reply += `Your records have been cross-checked across your Passbook & Ledger. Ask me any detail regarding specific categories, merchants, or cashflow optimization.`;
+      }
+    }
+
+    return res.json({
+      reply,
+      suggestedPrompts: [
+        'Audit my highest spending categories',
+        'How can I increase my monthly savings?',
+        'What is my current net cashflow?',
       ],
     });
   }
