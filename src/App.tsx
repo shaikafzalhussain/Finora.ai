@@ -435,12 +435,48 @@ export default function App() {
       .reduce((sum, t) => sum + t.amount, 0);
   }, [previousMonthTransactions]);
 
+  const previousMonthIncome = useMemo(() => {
+    return previousMonthTransactions
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [previousMonthTransactions]);
+
   const previousMonthName = useMemo(() => {
     const [yStr, mStr] = currentMonthKey.split('-');
     const curYear = parseInt(yStr, 10);
     const curMonth = parseInt(mStr, 10);
     const prevDate = new Date(curYear, curMonth - 2, 1);
     return new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(prevDate);
+  }, [currentMonthKey]);
+
+  // Two Months Ago (Last Month's Previous Month) for Multi-Month History
+  const last2MonthTransactions = useMemo(() => {
+    const [yStr, mStr] = currentMonthKey.split('-');
+    const curYear = parseInt(yStr, 10);
+    const curMonth = parseInt(mStr, 10);
+    const date2Ago = new Date(curYear, curMonth - 3, 1);
+    const key2Ago = `${date2Ago.getFullYear()}-${(date2Ago.getMonth() + 1).toString().padStart(2, '0')}`;
+    return transactions.filter((t) => t.date.startsWith(key2Ago));
+  }, [transactions, currentMonthKey]);
+
+  const last2MonthSpend = useMemo(() => {
+    return last2MonthTransactions
+      .filter((t) => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [last2MonthTransactions]);
+
+  const last2MonthIncome = useMemo(() => {
+    return last2MonthTransactions
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [last2MonthTransactions]);
+
+  const last2MonthName = useMemo(() => {
+    const [yStr, mStr] = currentMonthKey.split('-');
+    const curYear = parseInt(yStr, 10);
+    const curMonth = parseInt(mStr, 10);
+    const date2Ago = new Date(curYear, curMonth - 3, 1);
+    return new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(date2Ago);
   }, [currentMonthKey]);
 
   const currentMonthInvestments = useMemo(() => {
@@ -862,7 +898,11 @@ export default function App() {
               stats={monthlyStats}
               formattedMonthName={formattedMonthName}
               previousMonthSpend={previousMonthSpend}
+              previousMonthIncome={previousMonthIncome}
               previousMonthName={previousMonthName}
+              last2MonthSpend={last2MonthSpend}
+              last2MonthIncome={last2MonthIncome}
+              last2MonthName={last2MonthName}
               hideBalanceDefault={userProfile.hideBalance}
               investmentAmount={currentMonthInvestments || 0}
               onOpenAddExpense={() => {

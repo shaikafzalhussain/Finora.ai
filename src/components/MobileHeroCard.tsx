@@ -20,6 +20,9 @@ import {
   ArrowUpRight,
   AlertOctagon,
   Scale,
+  Calendar,
+  Layers,
+  History,
 } from 'lucide-react';
 import { MonthlyStats } from '../utils/financeCalculations';
 import { BankAccountDetails } from '../types/finance';
@@ -32,7 +35,11 @@ interface MobileHeroCardProps {
   stats: MonthlyStats;
   formattedMonthName: string;
   previousMonthSpend?: number;
+  previousMonthIncome?: number;
   previousMonthName?: string;
+  last2MonthSpend?: number;
+  last2MonthIncome?: number;
+  last2MonthName?: string;
   hideBalanceDefault?: boolean;
   investmentAmount?: number;
   onOpenAddExpense: () => void;
@@ -50,7 +57,11 @@ export const MobileHeroCard: React.FC<MobileHeroCardProps> = ({
   stats,
   formattedMonthName,
   previousMonthSpend = 0,
+  previousMonthIncome = 0,
   previousMonthName = 'Previous Month',
+  last2MonthSpend = 0,
+  last2MonthIncome = 0,
+  last2MonthName = 'Two Months Ago',
   hideBalanceDefault = false,
   investmentAmount = 0,
   onOpenAddExpense,
@@ -61,6 +72,9 @@ export const MobileHeroCard: React.FC<MobileHeroCardProps> = ({
   onOpenBankDetails,
 }) => {
   const [showBalance, setShowBalance] = useState(!hideBalanceDefault);
+  // Toggle between 'month' (Current Month Mode: updates to current month balance, expenses, budget)
+  // and 'multi' (Comprehensive Overview Mode: shows total cumulative balance and current + previous + last month history)
+  const [viewMode, setViewMode] = useState<'month' | 'multi'>('month');
 
   const firstName = userName ? userName.trim().split(' ')[0] : 'Friend';
 
@@ -71,7 +85,12 @@ export const MobileHeroCard: React.FC<MobileHeroCardProps> = ({
     ? [bankDetails]
     : [];
 
-  const totalBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
+  const totalBankBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
+  // When toggle is ON (viewMode === 'month'): display current month's net cashflow balance surplus/deficit
+  // When toggle is OFF (viewMode === 'multi'): display total cumulative bank balance
+  const displayedBalance = viewMode === 'month' ? stats.netSavings : totalBankBalance;
+  const isBalanceNegative = displayedBalance < 0;
+
   const hasFinancialActivity = stats.totalIncome > 0 || stats.totalExpenses > 0 || investmentAmount > 0;
 
   return (
@@ -106,74 +125,107 @@ export const MobileHeroCard: React.FC<MobileHeroCardProps> = ({
             </span>
           </div>
 
-          {/* My Total Balance Section with Visibility Toggle */}
+          {/* My Total Balance Section with Monthwise / Cumulative Toggle & Visibility Toggle */}
           <div className="pt-2">
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  My Total Balance
+                  {viewMode === 'month' ? `Balance (${formattedMonthName})` : 'Total Bank Balance'}
                 </span>
-                {totalBalance < 0 && (
+                {isBalanceNegative && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse">
                     <AlertOctagon className="h-3 w-3" />
                     <span>Overdraft / Negative</span>
                   </span>
                 )}
-                {totalBalance === 0 && hasFinancialActivity && (
+                {displayedBalance === 0 && hasFinancialActivity && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
                     Zero Balance
                   </span>
                 )}
               </div>
 
-              {/* Visibility Toggle 👁 Show / Hide balance */}
-              <button
-                onClick={() => setShowBalance(!showBalance)}
-                className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-emerald-400 transition-colors px-2 py-0.5 rounded-lg hover:bg-slate-800"
-                title={showBalance ? 'Hide balance' : 'Show balance'}
-              >
-                {showBalance ? (
-                  <>
+              {/* View Mode Toggle Pill + Visibility Toggle */}
+              <div className="flex items-center gap-2">
+                {/* Interactive Toggle: Turn ON for Current Month Data, Turn OFF for Total & Multi-Month Overview */}
+                <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('month')}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
+                      viewMode === 'month'
+                        ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Current Month Analysis (Net Balance, Monthwise Spend, Budgets)"
+                  >
+                    <Calendar className="h-3 w-3" />
+                    <span>Current Month</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('multi')}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
+                      viewMode === 'multi'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Total Cumulative Balance & 3-Month Trend (Current, Previous, Last Month)"
+                  >
+                    <Layers className="h-3 w-3" />
+                    <span>All-Time & Trends</span>
+                  </button>
+                </div>
+
+                {/* Visibility Toggle 👁 Show / Hide balance */}
+                <button
+                  onClick={() => setShowBalance(!showBalance)}
+                  className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-emerald-400 transition-colors px-2 py-1 rounded-lg hover:bg-slate-800"
+                  title={showBalance ? 'Hide balance' : 'Show balance'}
+                >
+                  {showBalance ? (
                     <EyeOff className="h-3.5 w-3.5 text-slate-400" />
-                    <span className="text-[11px]">Hide balance</span>
-                  </>
-                ) : (
-                  <>
+                  ) : (
                     <Eye className="h-3.5 w-3.5 text-emerald-400" />
-                    <span className="text-[11px] text-emerald-400 font-semibold">Show balance</span>
-                  </>
-                )}
-              </button>
+                  )}
+                </button>
+              </div>
             </div>
 
             <div className="text-3xl sm:text-4xl font-black tracking-tight flex items-baseline gap-2">
               <span className={`font-mono transition-colors ${
-                totalBalance < 0 
+                isBalanceNegative 
                   ? 'text-rose-500 font-black drop-shadow-[0_0_12px_rgba(244,63,94,0.35)]' 
-                  : totalBalance === 0
+                  : displayedBalance === 0
                   ? 'text-amber-400 font-extrabold'
                   : 'text-white'
               }`}>
-                {showBalance ? formatCurrency(totalBalance) : '••••••••'}
+                {showBalance ? formatCurrency(displayedBalance) : '••••••••'}
               </span>
-              {totalBalance < 0 && showBalance && (
+              {isBalanceNegative && showBalance && (
                 <span className="text-xs font-bold text-rose-400 uppercase tracking-wide">
                   Deficit
+                </span>
+              )}
+              {viewMode === 'month' && showBalance && !isBalanceNegative && stats.netSavings > 0 && (
+                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wide">
+                  Surplus
                 </span>
               )}
             </div>
 
             {/* Overdraft / Negative Balance Alert Banner */}
-            {totalBalance < 0 && (
+            {isBalanceNegative && (
               <div className="mt-2.5 p-3 rounded-2xl bg-rose-950/50 border border-rose-500/40 text-xs text-rose-200 flex items-start gap-2.5 shadow-inner">
                 <AlertOctagon className="h-4 w-4 text-rose-400 flex-shrink-0 mt-0.5" />
                 <div className="space-y-0.5 min-w-0 flex-1">
                   <div className="font-bold text-rose-300 flex items-center justify-between">
                     <span>Account in Overdraft: Expenses Exceeded Balance</span>
-                    <span className="font-mono text-rose-400 font-black">-{formatCurrency(Math.abs(totalBalance))}</span>
+                    <span className="font-mono text-rose-400 font-black">-{formatCurrency(Math.abs(displayedBalance))}</span>
                   </div>
                   <p className="text-[11px] text-rose-200/80 leading-relaxed">
-                    Expenses added this month exceed your available funds. Add incoming income or adjust spending to bring your balance back above ₹0.
+                    Expenses added exceed your available funds. Adding incoming income will automatically cut off this negative deficit and restore your positive balance.
                   </p>
                 </div>
               </div>
@@ -327,8 +379,8 @@ export const MobileHeroCard: React.FC<MobileHeroCardProps> = ({
                     </div>
                   </div>
                 )}
-                {/* Month-over-Month Quick Comparison: Current vs Previous Month */}
-                {previousMonthSpend > 0 && (
+                {/* Mode 1: Month-over-Month Quick Comparison: Current vs Previous Month (when in Month mode) */}
+                {viewMode === 'month' && previousMonthSpend > 0 && (
                   <div className="mt-3.5 pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-1.5 text-slate-400">
                       <Scale className="h-3.5 w-3.5 text-indigo-400" />
@@ -353,6 +405,68 @@ export const MobileHeroCard: React.FC<MobileHeroCardProps> = ({
                           Identical to last month
                         </span>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mode 2: Multi-Month Historical Analysis (Current Month, Previous Month, and Last Month) */}
+                {viewMode === 'multi' && (
+                  <div className="mt-3.5 pt-3.5 border-t border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+                        <History className="h-3.5 w-3.5 text-indigo-400" />
+                        <span>3-Month Expense & Cashflow Trend</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Total Balance: <strong className="text-white font-mono">{formatCurrency(totalBankBalance)}</strong>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      {/* Current Month */}
+                      <div className="p-2.5 rounded-xl bg-slate-950 border border-emerald-500/30 space-y-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 block truncate">
+                          {formattedMonthName} (Current)
+                        </span>
+                        <div className="text-xs sm:text-sm font-black text-white font-mono">
+                          {formatCurrency(stats.totalExpenses)}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          Net: <span className={stats.netSavings >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                            {stats.netSavings >= 0 ? '+' : ''}{formatCurrency(stats.netSavings)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Previous Month */}
+                      <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-300 block truncate">
+                          {previousMonthName}
+                        </span>
+                        <div className="text-xs sm:text-sm font-black text-white font-mono">
+                          {formatCurrency(previousMonthSpend)}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          Net: <span className={(previousMonthIncome - previousMonthSpend) >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                            {(previousMonthIncome - previousMonthSpend) >= 0 ? '+' : ''}{formatCurrency(previousMonthIncome - previousMonthSpend)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Two Months Ago (Last Month) */}
+                      <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block truncate">
+                          {last2MonthName}
+                        </span>
+                        <div className="text-xs sm:text-sm font-black text-white font-mono">
+                          {formatCurrency(last2MonthSpend)}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          Net: <span className={(last2MonthIncome - last2MonthSpend) >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                            {(last2MonthIncome - last2MonthSpend) >= 0 ? '+' : ''}{formatCurrency(last2MonthIncome - last2MonthSpend)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
