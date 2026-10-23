@@ -21,18 +21,23 @@ import {
   EyeOff,
   ChevronRight,
   AlertTriangle,
+  Calendar,
+  Filter,
+  FileText,
 } from 'lucide-react';
-import { UserProfile, BankAccountDetails } from '../types/finance';
+import { UserProfile, BankAccountDetails, Transaction } from '../types/finance';
 import { formatCurrency } from '../utils/formatters';
+import { DateFilterRange } from '../utils/pdfExport';
 
 interface ProfileViewProps {
   user: UserProfile;
+  transactions?: Transaction[];
   onUpdateUser: (updated: Partial<UserProfile>) => void;
   onOpenBankModal: () => void;
   onLogout: () => void;
   onExportCsv: () => void;
   onExportJson: () => void;
-  onExportPdf: () => void;
+  onExportPdf: (dateRange?: DateFilterRange) => void;
   onResetData: () => void;
   onDeleteAccount: () => void;
   onOpenAdmin?: () => void;
@@ -58,6 +63,62 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [isConfirmDelete, setIsConfirmDelete] = useState(false);
   const [isChangingPasscode, setIsChangingPasscode] = useState(false);
   const [newPasscode, setNewPasscode] = useState('');
+
+  // Timeframe states for PDF Report Generation
+  const now = new Date();
+  const defaultMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+  const defaultYearStr = now.getFullYear().toString();
+  const defaultDateStr = now.toISOString().split('T')[0];
+  const firstDayOfMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-01`;
+
+  const [pdfTimeframeMode, setPdfTimeframeMode] = useState<'month' | 'year' | 'custom' | 'all'>('month');
+  const [pdfSelectedMonth, setPdfSelectedMonth] = useState<string>(defaultMonthStr);
+  const [pdfSelectedYear, setPdfSelectedYear] = useState<string>(defaultYearStr);
+  const [pdfCustomStart, setPdfCustomStart] = useState<string>(firstDayOfMonthStr);
+  const [pdfCustomEnd, setPdfCustomEnd] = useState<string>(defaultDateStr);
+
+  const availableYears = [
+    now.getFullYear(),
+    now.getFullYear() - 1,
+    now.getFullYear() - 2,
+  ];
+
+  const handleDownloadPdfReport = () => {
+    let dateRange: DateFilterRange | undefined;
+
+    if (pdfTimeframeMode === 'month') {
+      const [y, m] = pdfSelectedMonth.split('-');
+      const year = parseInt(y, 10);
+      const month = parseInt(m, 10);
+      const lastDay = new Date(year, month, 0).getDate();
+      const monthDate = new Date(year, month - 1, 1);
+      const monthName = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(monthDate);
+
+      dateRange = {
+        startDate: `${pdfSelectedMonth}-01`,
+        endDate: `${pdfSelectedMonth}-${lastDay.toString().padStart(2, '0')}`,
+        label: `Month of ${monthName}`,
+      };
+    } else if (pdfTimeframeMode === 'year') {
+      dateRange = {
+        startDate: `${pdfSelectedYear}-01-01`,
+        endDate: `${pdfSelectedYear}-12-31`,
+        label: `Calendar Year ${pdfSelectedYear}`,
+      };
+    } else if (pdfTimeframeMode === 'custom') {
+      dateRange = {
+        startDate: pdfCustomStart || '2020-01-01',
+        endDate: pdfCustomEnd || '2099-12-31',
+        label: `Custom Range (${pdfCustomStart} to ${pdfCustomEnd})`,
+      };
+    } else {
+      dateRange = {
+        label: 'Entire Recorded Ledger History',
+      };
+    }
+
+    onExportPdf(dateRange);
+  };
 
   // Format phone number
   const rawPhone = user.phone || '9876504821';
@@ -436,18 +497,126 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
 
+        {/* Timeframe Filter Controls for PDF Report */}
+        <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Select Report Timeframe (Month, Date, Year)</span>
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">
+              {pdfTimeframeMode === 'all'
+                ? 'All Ledger Records'
+                : pdfTimeframeMode === 'month'
+                ? `Month: ${pdfSelectedMonth}`
+                : pdfTimeframeMode === 'year'
+                ? `Year: ${pdfSelectedYear}`
+                : `${pdfCustomStart} to ${pdfCustomEnd}`}
+            </span>
+          </div>
+
+          {/* Preset Buttons */}
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { id: 'month', label: 'By Month' },
+              { id: 'year', label: 'By Year' },
+              { id: 'custom', label: 'Custom Date Range' },
+              { id: 'all', label: 'Entire History' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setPdfTimeframeMode(tab.id as any)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  pdfTimeframeMode === tab.id
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                    : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Filter Inputs according to selected mode */}
+          <div className="pt-1">
+            {pdfTimeframeMode === 'month' && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <label className="text-xs text-slate-400 sm:w-28 flex-shrink-0">Select Month:</label>
+                <input
+                  type="month"
+                  value={pdfSelectedMonth}
+                  onChange={(e) => setPdfSelectedMonth(e.target.value)}
+                  className="px-3 py-1.5 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl text-xs text-white focus:outline-none"
+                />
+              </div>
+            )}
+
+            {pdfTimeframeMode === 'year' && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <label className="text-xs text-slate-400 sm:w-28 flex-shrink-0">Select Year:</label>
+                <select
+                  value={pdfSelectedYear}
+                  onChange={(e) => setPdfSelectedYear(e.target.value)}
+                  className="px-3 py-1.5 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl text-xs text-white focus:outline-none"
+                >
+                  {availableYears.map((yr) => (
+                    <option key={yr} value={yr}>
+                      {yr} Financial Year
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {pdfTimeframeMode === 'custom' && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-400">From:</span>
+                  <input
+                    type="date"
+                    value={pdfCustomStart}
+                    onChange={(e) => setPdfCustomStart(e.target.value)}
+                    className="px-3 py-1.5 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl text-xs text-white focus:outline-none"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-400">To:</span>
+                  <input
+                    type="date"
+                    value={pdfCustomEnd}
+                    onChange={(e) => setPdfCustomEnd(e.target.value)}
+                    className="px-3 py-1.5 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl text-xs text-white focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {pdfTimeframeMode === 'all' && (
+              <p className="text-[11px] text-slate-400">
+                All ledger records from your earliest recorded transaction to present day will be compiled into the report.
+              </p>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
           <button
-            onClick={onExportPdf}
-            className="p-3.5 rounded-2xl bg-emerald-950/30 hover:bg-emerald-950/50 border border-emerald-800/50 text-left transition-colors flex items-center justify-between group sm:col-span-3"
+            onClick={handleDownloadPdfReport}
+            className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-emerald-950/60 to-slate-900 hover:from-emerald-950/60 hover:to-slate-800 border border-emerald-500/40 text-left transition-all flex items-center justify-between group sm:col-span-3 shadow-lg active:scale-[0.99]"
           >
-            <div>
-              <span className="text-xs font-extrabold text-emerald-300 block group-hover:text-emerald-200">
-                📄 Export Financial Report (PDF)
+            <div className="space-y-0.5">
+              <span className="text-xs sm:text-sm font-extrabold text-emerald-300 block group-hover:text-emerald-200 flex items-center gap-1.5">
+                <FileText className="h-4 w-4 text-emerald-400" />
+                <span>Download Financial Health Report (PDF)</span>
               </span>
-              <span className="text-[10px] text-slate-300">Executive summary report with account breakdown & transactions</span>
+              <span className="text-[11px] text-slate-300 block">
+                Includes category expense breakdown from Passbook & Ledger, actual spent amounts, bank balances, and full transaction history.
+              </span>
             </div>
-            <Download className="h-4 w-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors flex-shrink-0 ml-2">
+              <Download className="h-5 w-5" />
+            </div>
           </button>
 
           <button

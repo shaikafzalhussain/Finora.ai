@@ -306,7 +306,9 @@ export const BankDetailsModal: React.FC<BankDetailsModalProps> = ({
                         <span className="text-[10px] uppercase font-bold text-slate-400 block">
                           Balance
                         </span>
-                        <span className="text-sm font-black text-white font-mono">
+                        <span className={`text-sm font-black font-mono ${
+                          (acc.balance || 0) < 0 ? 'text-rose-400 font-black' : 'text-white'
+                        }`}>
                           {formatCurrency(acc.balance || 0)}
                         </span>
                       </div>

@@ -18,6 +18,8 @@ import {
   PiggyBank,
   ArrowDownLeft,
   ArrowUpRight,
+  AlertOctagon,
+  Scale,
 } from 'lucide-react';
 import { MonthlyStats } from '../utils/financeCalculations';
 import { BankAccountDetails } from '../types/finance';
@@ -29,6 +31,8 @@ interface MobileHeroCardProps {
   bankAccounts?: BankAccountDetails[];
   stats: MonthlyStats;
   formattedMonthName: string;
+  previousMonthSpend?: number;
+  previousMonthName?: string;
   hideBalanceDefault?: boolean;
   investmentAmount?: number;
   onOpenAddExpense: () => void;
@@ -45,6 +49,8 @@ export const MobileHeroCard: React.FC<MobileHeroCardProps> = ({
   bankAccounts = [],
   stats,
   formattedMonthName,
+  previousMonthSpend = 0,
+  previousMonthName = 'Previous Month',
   hideBalanceDefault = false,
   investmentAmount = 0,
   onOpenAddExpense,
@@ -103,9 +109,22 @@ export const MobileHeroCard: React.FC<MobileHeroCardProps> = ({
           {/* My Total Balance Section with Visibility Toggle */}
           <div className="pt-2">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                My Total Balance
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  My Total Balance
+                </span>
+                {totalBalance < 0 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse">
+                    <AlertOctagon className="h-3 w-3" />
+                    <span>Overdraft / Negative</span>
+                  </span>
+                )}
+                {totalBalance === 0 && hasFinancialActivity && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Zero Balance
+                  </span>
+                )}
+              </div>
 
               {/* Visibility Toggle 👁 Show / Hide balance */}
               <button
@@ -127,31 +146,68 @@ export const MobileHeroCard: React.FC<MobileHeroCardProps> = ({
               </button>
             </div>
 
-            <div className="text-3xl sm:text-4xl font-black text-white tracking-tight flex items-baseline gap-2">
-              <span className="font-mono">
+            <div className="text-3xl sm:text-4xl font-black tracking-tight flex items-baseline gap-2">
+              <span className={`font-mono transition-colors ${
+                totalBalance < 0 
+                  ? 'text-rose-500 font-black drop-shadow-[0_0_12px_rgba(244,63,94,0.35)]' 
+                  : totalBalance === 0
+                  ? 'text-amber-400 font-extrabold'
+                  : 'text-white'
+              }`}>
                 {showBalance ? formatCurrency(totalBalance) : '••••••••'}
               </span>
+              {totalBalance < 0 && showBalance && (
+                <span className="text-xs font-bold text-rose-400 uppercase tracking-wide">
+                  Deficit
+                </span>
+              )}
             </div>
+
+            {/* Overdraft / Negative Balance Alert Banner */}
+            {totalBalance < 0 && (
+              <div className="mt-2.5 p-3 rounded-2xl bg-rose-950/50 border border-rose-500/40 text-xs text-rose-200 flex items-start gap-2.5 shadow-inner">
+                <AlertOctagon className="h-4 w-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                <div className="space-y-0.5 min-w-0 flex-1">
+                  <div className="font-bold text-rose-300 flex items-center justify-between">
+                    <span>Account in Overdraft: Expenses Exceeded Balance</span>
+                    <span className="font-mono text-rose-400 font-black">-{formatCurrency(Math.abs(totalBalance))}</span>
+                  </div>
+                  <p className="text-[11px] text-rose-200/80 leading-relaxed">
+                    Expenses added this month exceed your available funds. Add incoming income or adjust spending to bring your balance back above ₹0.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Bank Card / Financial Accounts (Below Total Balance - Requirements 1 & 2) */}
             {accounts.length > 0 ? (
               <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                {accounts.map((acc) => (
-                  <button
-                    key={acc.id || acc.accountNumberLast4}
-                    onClick={onOpenBankDetails}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 hover:bg-slate-950 border border-white/10 hover:border-emerald-500/40 transition-all text-left group"
-                    title={`Manage ${acc.bankName}`}
-                  >
-                    <Building className="h-3.5 w-3.5 text-emerald-400" />
-                    <span className="text-xs font-bold text-slate-200 group-hover:text-white font-mono">
-                      {acc.bankName} ••••{acc.accountNumberLast4 || '0000'}
-                    </span>
-                    <span className="text-[11px] font-mono text-emerald-400 font-bold">
-                      {formatCurrency(acc.balance ?? 0)}
-                    </span>
-                  </button>
-                ))}
+                {accounts.map((acc) => {
+                  const accBal = acc.balance ?? 0;
+                  const isNeg = accBal < 0;
+                  return (
+                    <button
+                      key={acc.id || acc.accountNumberLast4}
+                      onClick={onOpenBankDetails}
+                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all text-left group ${
+                        isNeg 
+                          ? 'bg-rose-950/40 hover:bg-rose-950/60 border-rose-500/40 hover:border-rose-500' 
+                          : 'bg-slate-950/80 hover:bg-slate-950 border-white/10 hover:border-emerald-500/40'
+                      }`}
+                      title={`Manage ${acc.bankName}`}
+                    >
+                      <Building className={`h-3.5 w-3.5 ${isNeg ? 'text-rose-400' : 'text-emerald-400'}`} />
+                      <span className="text-xs font-bold text-slate-200 group-hover:text-white font-mono">
+                        {acc.bankName} ••••{acc.accountNumberLast4 || '0000'}
+                      </span>
+                      <span className={`text-[11px] font-mono font-bold ${
+                        isNeg ? 'text-rose-400 font-extrabold' : 'text-emerald-400'
+                      }`}>
+                        {formatCurrency(accBal)}
+                      </span>
+                    </button>
+                  );
+                })}
                 <button
                   onClick={onOpenBankDetails}
                   className="px-2.5 py-1.5 rounded-xl bg-slate-950/60 hover:bg-slate-900 border border-dashed border-slate-700 hover:border-emerald-500/40 text-slate-400 hover:text-emerald-400 text-xs font-bold transition-all"
@@ -268,6 +324,35 @@ export const MobileHeroCard: React.FC<MobileHeroCardProps> = ({
                         }`}
                         style={{ width: `${Math.min(100, stats.budgetUtilizationRate)}%` }}
                       />
+                    </div>
+                  </div>
+                )}
+                {/* Month-over-Month Quick Comparison: Current vs Previous Month */}
+                {previousMonthSpend > 0 && (
+                  <div className="mt-3.5 pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-slate-400">
+                      <Scale className="h-3.5 w-3.5 text-indigo-400" />
+                      <span className="text-[11px] font-medium">
+                        vs {previousMonthName} ({formatCurrency(previousMonthSpend)}):
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {stats.totalExpenses > previousMonthSpend ? (
+                        <span className="text-[11px] font-bold text-rose-400 flex items-center gap-1">
+                          <TrendingDown className="h-3.5 w-3.5 text-rose-400" />
+                          <span>+{formatCurrency(stats.totalExpenses - previousMonthSpend)} higher spend</span>
+                        </span>
+                      ) : stats.totalExpenses < previousMonthSpend ? (
+                        <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                          <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
+                          <span>{formatCurrency(previousMonthSpend - stats.totalExpenses)} saved vs last mo</span>
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-bold text-slate-300">
+                          Identical to last month
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}

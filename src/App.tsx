@@ -80,7 +80,7 @@ import {
   isExistingAdminUser,
 } from './utils/storage';
 import { EXISTING_USER_BANK_ACCOUNTS } from './utils/existingUserData';
-import { exportFinancialReportPDF } from './utils/pdfExport';
+import { exportFinancialReportPDF, DateFilterRange } from './utils/pdfExport';
 
 import {
   computeMonthlyStats,
@@ -564,7 +564,7 @@ export default function App() {
                           effectiveAccounts.length === 1;
           if (isMatch) {
             const currentBal = acc.balance ?? 0;
-            const newBal = Math.max(0, currentBal + delta);
+            const newBal = currentBal + delta;
             return { ...acc, balance: newBal };
           }
           return acc;
@@ -619,7 +619,7 @@ export default function App() {
                           effectiveAccounts.length === 1;
           if (isMatch) {
             const currentBal = acc.balance ?? 0;
-            const newBal = Math.max(0, currentBal + delta);
+            const newBal = currentBal + delta;
             return { ...acc, balance: newBal };
           }
           return acc;
@@ -788,7 +788,7 @@ export default function App() {
     );
   }
 
-  const handleExportPdf = () => {
+  const handleExportPdf = (dateRange?: DateFilterRange) => {
     const bAccounts = userProfile.bankAccounts && userProfile.bankAccounts.length > 0
       ? userProfile.bankAccounts
       : (userProfile.bankDetails ? [userProfile.bankDetails] : []);
@@ -800,6 +800,7 @@ export default function App() {
       recurring,
       savingsGoals,
       monthlyStats,
+      dateRange,
     });
   };
 
@@ -860,6 +861,8 @@ export default function App() {
               }
               stats={monthlyStats}
               formattedMonthName={formattedMonthName}
+              previousMonthSpend={previousMonthSpend}
+              previousMonthName={previousMonthName}
               hideBalanceDefault={userProfile.hideBalance}
               investmentAmount={currentMonthInvestments || 0}
               onOpenAddExpense={() => {
@@ -1214,6 +1217,7 @@ export default function App() {
         {activeTab === 'profile' && (
           <ProfileView
             user={userProfile}
+            transactions={transactions}
             onUpdateUser={handleUpdateProfile}
             onOpenBankModal={() => setIsBankModalOpen(true)}
             onLogout={handleLogout}

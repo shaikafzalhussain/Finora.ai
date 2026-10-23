@@ -245,7 +245,9 @@ export const BalanceInsightsCard: React.FC<BalanceInsightsCardProps> = ({
           <span className="text-[9px] sm:text-[10px] text-slate-400 block mb-0.5 uppercase tracking-wider font-semibold">
             Current Balance
           </span>
-          <span className="text-xs sm:text-sm font-bold text-white font-mono">
+          <span className={`text-xs sm:text-sm font-bold font-mono ${
+            totalBalance < 0 ? 'text-rose-400 font-extrabold' : 'text-white'
+          }`}>
             {formatCurrency(totalBalance)}
           </span>
         </div>
