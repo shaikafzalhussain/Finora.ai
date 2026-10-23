@@ -105,9 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'analytics', label: 'Analytics' },
     { id: 'coach', label: 'AI Money Coach', badge: 'Active' },
     { id: 'ai-optimizer', label: 'AI Health Audit', badge: 'Smart' },
-    { id: 'subscriptions', label: 'Subscriptions' },
     { id: 'goals', label: 'Savings Goals' },
-    { id: 'calendar', label: 'Financial Calendar' },
     { id: 'reports', label: 'Reports' },
     { id: 'profile', label: 'Profile' },
   ];
@@ -169,7 +167,7 @@ export const Header: React.FC<HeaderProps> = ({
                   if (onOpenNotifications) {
                     onOpenNotifications();
                   } else {
-                    setActiveTab('subscriptions');
+                    setActiveTab('dashboard');
                   }
                 }}
                 className="relative p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
@@ -263,7 +261,7 @@ export const Header: React.FC<HeaderProps> = ({
                 if (onOpenNotifications) {
                   onOpenNotifications();
                 } else {
-                  setActiveTab('subscriptions');
+                  setActiveTab('dashboard');
                 }
               }}
               className="relative p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
@@ -378,16 +376,6 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <Download className="h-3.5 w-3.5 text-slate-400" />
                   <span>Export JSON Backup</span>
-                </button>
-
-                <div className="border-t border-slate-800 my-1"></div>
-
-                <button
-                  onClick={onResetData}
-                  className="w-full text-left px-3.5 py-2 text-xs text-rose-400 hover:bg-rose-950/30 flex items-center gap-2"
-                >
-                  <RotateCcw className="h-3.5 w-3.5 text-rose-400" />
-                  <span>Reset Demo Data (INR)</span>
                 </button>
               </div>
             </div>

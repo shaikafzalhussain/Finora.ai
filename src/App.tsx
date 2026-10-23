@@ -14,9 +14,7 @@ import { AIBudgetOptimizerView } from './components/AIBudgetOptimizerView';
 import { AIMoneyCoachView } from './components/AIMoneyCoachView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { BudgetsView } from './components/BudgetsView';
-import { RecurringExpensesView } from './components/RecurringExpensesView';
 import { SavingsGoalsView } from './components/SavingsGoalsView';
-import { FinancialCalendarView } from './components/FinancialCalendarView';
 import { MonthlyReportView } from './components/MonthlyReportView';
 import { SmartAlertsBanner } from './components/SmartAlertsBanner';
 import { WhatIfSimulator } from './components/WhatIfSimulator';
@@ -558,8 +556,8 @@ export default function App() {
           unnecessarySubs.reduce((s, r) => s + r.amount, 0)
         )}/mo).`,
         date: currentMonthKey,
-        actionText: 'Manage Subscriptions',
-        actionLink: 'subscriptions',
+        actionText: 'Review in Analytics',
+        actionLink: 'analytics',
       });
     }
 
@@ -935,7 +933,7 @@ export default function App() {
             <UpcomingPaymentsCard
               payments={upcomingPayments}
               onToggleStatus={handleToggleUpcomingStatus}
-              onViewAll={() => setActiveTab('calendar')}
+              onViewAll={() => setActiveTab('analytics')}
             />
 
             {/* AI Financial Insight Card (Strictly Zero Assumptions on Fresh Users) */}
@@ -1207,37 +1205,13 @@ export default function App() {
           />
         )}
 
-        {/* 7. SUBSCRIPTIONS */}
-        {activeTab === 'subscriptions' && (
-          <RecurringExpensesView
-            recurring={recurring}
-            categories={categories}
-            onAddRecurring={handleAddRecurring}
-            onDeleteRecurring={handleDeleteRecurring}
-            onUpdateStatus={handleUpdateRecurringStatus}
-            onUpdateUtility={handleUpdateSubscriptionUtility}
-            onMarkAsPaid={handleMarkRecurringAsPaid}
-          />
-        )}
-
-        {/* 8. SAVINGS GOALS */}
+        {/* 7. SAVINGS GOALS */}
         {activeTab === 'goals' && (
           <SavingsGoalsView
             goals={savingsGoals}
             onAddGoal={handleAddGoal}
             onDeleteGoal={handleDeleteGoal}
             onContribute={handleContributeGoal}
-          />
-        )}
-
-        {/* 9. FINANCIAL CALENDAR */}
-        {activeTab === 'calendar' && (
-          <FinancialCalendarView
-            currentMonthKey={currentMonthKey}
-            transactions={transactions}
-            recurring={recurring}
-            categories={categories}
-            formattedMonthName={formattedMonthName}
           />
         )}
 
@@ -1361,7 +1335,7 @@ export default function App() {
         isOpen={isNotificationCenterOpen}
         onClose={() => setIsNotificationCenterOpen(false)}
         recurringExpenses={recurring}
-        onNavigateToSubscriptions={() => setActiveTab('subscriptions')}
+        onNavigateToSubscriptions={() => setActiveTab('analytics')}
       />
     </div>
   );

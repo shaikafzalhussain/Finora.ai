@@ -61,6 +61,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [notifications, setNotifications] = useState(user.notificationsEnabled ?? true);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isConfirmDelete, setIsConfirmDelete] = useState(false);
+  const [isConfirmReset, setIsConfirmReset] = useState(false);
+  const [resetPhrase, setResetPhrase] = useState('');
   const [isChangingPasscode, setIsChangingPasscode] = useState(false);
   const [newPasscode, setNewPasscode] = useState('');
 
@@ -648,7 +650,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
         <div className="border-t border-white/5 pt-3 flex flex-wrap gap-2.5 justify-between">
           <button
-            onClick={onResetData}
+            onClick={() => {
+              setIsConfirmReset(true);
+              setResetPhrase('');
+            }}
             className="px-4 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white font-bold text-xs transition-colors flex items-center gap-1.5"
           >
             <RotateCcw className="h-3.5 w-3.5" />
@@ -663,6 +668,50 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <span>Delete Account</span>
           </button>
         </div>
+
+        {/* Double Confirmation with Typed Phrase for Reset Demo Data */}
+        {isConfirmReset && (
+          <div className="p-4 rounded-2xl bg-amber-950/30 border border-amber-500/40 space-y-3 mt-2 animate-in fade-in">
+            <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+              <AlertTriangle className="h-4 w-4" />
+              <span>Confirm Data Reset (Type "RESET" to confirm)</span>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              To protect genuine user accounts from accidental erasure, please type <strong className="text-white font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-white/10">RESET</strong> below to restore sample records.
+            </p>
+            <div className="space-y-2">
+              <input
+                type="text"
+                placeholder="Type RESET here"
+                value={resetPhrase}
+                onChange={(e) => setResetPhrase(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl text-xs text-white uppercase font-mono tracking-wider focus:outline-none"
+              />
+              <div className="flex gap-2">
+                <button
+                  disabled={resetPhrase.trim() !== 'RESET'}
+                  onClick={() => {
+                    setIsConfirmReset(false);
+                    setResetPhrase('');
+                    onResetData();
+                  }}
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:hover:bg-amber-600 text-slate-950 font-bold text-xs transition-all"
+                >
+                  Confirm & Reset Data
+                </button>
+                <button
+                  onClick={() => {
+                    setIsConfirmReset(false);
+                    setResetPhrase('');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-bold text-xs"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {isConfirmDelete && (
           <div className="p-4 rounded-2xl bg-rose-950/30 border border-rose-500/40 space-y-2 mt-2">

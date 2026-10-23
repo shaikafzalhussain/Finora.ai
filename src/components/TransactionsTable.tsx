@@ -12,6 +12,7 @@ import {
   Tag,
   Clock,
   MoreVertical,
+  X,
 } from 'lucide-react';
 import { Category, Transaction, BankAccountDetails } from '../types/finance';
 import { formatCurrency, formatDate, getCategoryIcon, getPaymentMethodLabel } from '../utils/formatters';
@@ -127,16 +128,26 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
       {/* Search & Filter Bar */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="flex-1 flex flex-wrap items-center gap-2">
-          {/* Search box */}
-          <div className="relative min-w-[200px] flex-1 max-w-sm">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+          {/* Search box for filtering merchant name or notes */}
+          <div className="relative min-w-[220px] flex-1 max-w-md">
+            <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search Swiggy, Blinkit, Uber..."
+              placeholder="Search by merchant name or notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none"
+              className="w-full pl-9 pr-9 py-2 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none transition-all"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white p-0.5 rounded transition-colors"
+                title="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Type Filter */}
