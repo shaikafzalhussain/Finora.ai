@@ -79,15 +79,15 @@ export const AIBudgetOptimizerView: React.FC<AIBudgetOptimizerViewProps> = ({
     {
       id: 'init-auditor-1',
       role: 'assistant',
-      content: `Hello ${userProfile?.firstName || userProfile?.name || 'there'}! I am your **AI Auditor**. I have direct access to your verified FINORA profile, bank accounts, and Passbook ledger. Ask me any custom question about your cashflow, account balances, spending trends, or financial health.`,
+      content: `Hey ${userProfile?.firstName || userProfile?.name || 'there'}! 👋 I'm your **AI Auditor & Financial Mentor**. I'm here to analyze your accounts and give you friendly, personalized financial advice.\n\nAsk me anything — whether you want to review your balances, audit high spending categories, or need smart suggestions to grow your monthly savings!`,
       timestamp: 'Just now',
     },
   ]);
   const [auditorSuggestions, setAuditorSuggestions] = useState<string[]>([
-    'How much total money is across my bank accounts?',
-    'What was my biggest expense this month?',
-    'Audit my spending patterns and give me 3 ways to save',
-    'Am I currently in a deficit or surplus?',
+    '💡 Give me 3 smart suggestions to save more money this month',
+    '📊 Audit my highest spending categories & recommend caps',
+    '🏦 How much total money is across my linked accounts?',
+    '🎯 Am I currently saving enough for my financial safety net?',
   ]);
 
   // Scenario Simulator State
