@@ -72,9 +72,8 @@ export const MobileHeroCard: React.FC<MobileHeroCardProps> = ({
   onOpenBankDetails,
 }) => {
   const [showBalance, setShowBalance] = useState(!hideBalanceDefault);
-  // Toggle between 'month' (Current Month Mode: updates to current month balance, expenses, budget)
-  // and 'multi' (Comprehensive Overview Mode: shows total cumulative balance and current + previous + last month history)
-  const [viewMode, setViewMode] = useState<'month' | 'multi'>('month');
+  // Toggle between 'multi' (Total Cumulative Bank Balance Mode - Default) and 'month' (Current Month Net Cashflow Analysis)
+  const [viewMode, setViewMode] = useState<'month' | 'multi'>('multi');
 
   const firstName = userName ? userName.trim().split(' ')[0] : 'Friend';
 

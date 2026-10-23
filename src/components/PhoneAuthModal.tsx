@@ -186,6 +186,13 @@ export const PhoneAuthModal: React.FC<PhoneAuthModalProps> = ({
         }
 
         // Standard user logged in from server database
+        const localRegistered = loadRegisteredUsers();
+        const localExisting = localRegistered.find((u) => cleanPhone(u.phone) === cleaned);
+        const serverAccounts = serverUser.bankAccounts || [];
+        const localAccounts = localExisting?.bankAccounts || (localExisting?.bankDetails ? [localExisting.bankDetails] : []);
+        const finalAccounts = serverAccounts.length > 0 ? serverAccounts : localAccounts;
+        const finalBankDetails = serverUser.bankDetails || localExisting?.bankDetails || (finalAccounts.length > 0 ? finalAccounts[0] : undefined);
+
         const authenticatedUser: UserProfile = {
           id: serverUser.id,
           name: `${serverUser.firstName || ''} ${serverUser.lastName || ''}`.trim() || 'User',
@@ -195,8 +202,8 @@ export const PhoneAuthModal: React.FC<PhoneAuthModalProps> = ({
           isAuthenticated: true,
           role: serverUser.role || 'user',
           isOnboarded: serverUser.isOnboarded ?? true,
-          bankDetails: serverUser.bankDetails,
-          bankAccounts: serverUser.bankAccounts || [],
+          bankDetails: finalBankDetails,
+          bankAccounts: finalAccounts,
           salaryDate: 1,
           createdAt: serverUser.createdAt || new Date().toISOString(),
         };
