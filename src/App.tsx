@@ -14,7 +14,6 @@ import { AIBudgetOptimizerView } from './components/AIBudgetOptimizerView';
 import { AIMoneyCoachView } from './components/AIMoneyCoachView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { BudgetsView } from './components/BudgetsView';
-import { SavingsGoalsView } from './components/SavingsGoalsView';
 import { MonthlyReportView } from './components/MonthlyReportView';
 import { SmartAlertsBanner } from './components/SmartAlertsBanner';
 import { WhatIfSimulator } from './components/WhatIfSimulator';
@@ -1205,15 +1204,7 @@ export default function App() {
           />
         )}
 
-        {/* 7. SAVINGS GOALS */}
-        {activeTab === 'goals' && (
-          <SavingsGoalsView
-            goals={savingsGoals}
-            onAddGoal={handleAddGoal}
-            onDeleteGoal={handleDeleteGoal}
-            onContribute={handleContributeGoal}
-          />
-        )}
+
 
         {/* 10. REPORTS */}
         {activeTab === 'reports' && (

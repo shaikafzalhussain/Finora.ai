@@ -105,7 +105,6 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'analytics', label: 'Analytics' },
     { id: 'coach', label: 'AI Money Coach', badge: 'Active' },
     { id: 'ai-optimizer', label: 'AI Health Audit', badge: 'Smart' },
-    { id: 'goals', label: 'Savings Goals' },
     { id: 'reports', label: 'Reports' },
     { id: 'profile', label: 'Profile' },
   ];
